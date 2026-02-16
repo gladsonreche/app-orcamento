@@ -110,9 +110,9 @@ Implementação completa da integração Supabase conforme o plano detalhado. To
   - Limite de 30 fotos por projeto
   - Loading indicator durante uploads
 
-### Storage Buckets (precisam ser criados manualmente):
+### Storage Buckets (✅ CRIADOS):
 
-**IMPORTANTE**: Antes de testar uploads, criar os seguintes buckets no Supabase Dashboard:
+**Status**: Buckets criados via migration SQL em 16/02/2026
 
 1. **company-logos** (público)
    - Path pattern: `{user_id}/logo.jpg`
@@ -129,11 +129,12 @@ Implementação completa da integração Supabase conforme o plano detalhado. To
    - Max file size: 20MB
    - Allowed types: application/pdf
 
-#### Como criar buckets:
-1. Ir para Supabase Dashboard → Storage
-2. Clicar em "New bucket"
-3. Criar cada bucket com as especificações acima
-4. Configurar policies de acesso (público para imagens, privado para PDFs)
+#### Buckets Configurados:
+- ✅ **company-logos**: 5MB, público, JPEG/PNG/WebP
+- ✅ **project-photos**: 10MB, público, JPEG/PNG/WebP
+- ✅ **estimate-pdfs**: 20MB, privado, PDF
+- ✅ Policies de segurança aplicadas (RLS)
+- ✅ Migration: `create_storage_buckets` aplicada com sucesso
 
 ---
 
@@ -160,11 +161,8 @@ Implementação completa da integração Supabase conforme o plano detalhado. To
 
 ## 🚀 Próximos Passos para Testar
 
-### 1. Criar Storage Buckets
-```bash
-# Ir para: https://supabase.com/dashboard/project/wjraififmbuspjzpqkcr/storage/buckets
-# Criar manualmente os 3 buckets listados acima
-```
+### 1. ~~Criar Storage Buckets~~ ✅ COMPLETO
+Storage buckets criados via migration SQL.
 
 ### 2. Instalar Dependências (se necessário)
 ```bash
@@ -246,9 +244,10 @@ npx expo start
 9. `app/src/screens/CompanyProfileScreen.tsx` - Logout + logo upload
 10. `app/src/screens/PhotoUploadScreen.tsx` - Storage upload
 
-### Migrations Supabase (2):
+### Migrations Supabase (3):
 1. `create_core_schema` - Todas as tabelas + RLS + triggers + indexes
 2. `add_subscription_plans` - Planos de assinatura
+3. `create_storage_buckets` - Storage buckets + policies de segurança
 
 ---
 
