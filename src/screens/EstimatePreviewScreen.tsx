@@ -554,9 +554,9 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
           setRejectionReason(err.message);
           setPhotoAnalysis(err.photoAnalysis);
         } else {
-          console.log('AI estimate failed, using local fallback:', err);
-          setAiSource('fallback');
-          setAiConfidence(92);
+          const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+          console.error('AI estimate failed:', errorMsg);
+          Alert.alert('AI Estimate Failed', errorMsg);
         }
       } finally {
         setIsLoadingAI(false);
