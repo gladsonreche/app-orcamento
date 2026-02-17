@@ -37,9 +37,7 @@ function MainTabs() {
           fontWeight: typography.weights.medium,
         },
         tabBarStyle: {
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 60,
+          paddingTop: 4,
           backgroundColor: colors.bgPrimary,
           borderTopWidth: 0.5,
           borderTopColor: colors.border,

@@ -37,8 +37,8 @@ export default function Input({
         <TextInput
           style={[
             styles.input,
-            iconLeft ? { paddingLeft: 0 } : undefined,
-            iconRight ? { paddingRight: 0 } : undefined,
+            iconLeft ? { paddingLeft: spacing.sm } : undefined,
+            iconRight ? { paddingRight: spacing.sm } : undefined,
             style,
           ]}
           placeholderTextColor={colors.textTertiary}
