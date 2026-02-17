@@ -5,6 +5,10 @@ import Constants from 'expo-constants';
 const OPENAI_API_KEY = Constants.expoConfig?.extra?.openaiApiKey || '';
 const MODEL = 'gpt-5.2-pro-2025-12-11';
 
+function isRemoteUrl(uri: string): boolean {
+  return uri.startsWith('http://') || uri.startsWith('https://');
+}
+
 export interface AILineItem {
   category: string;
   description: string;
@@ -32,8 +36,19 @@ export class PhotoValidationError extends Error {
 
 async function imageToBase64(uri: string): Promise<string> {
   try {
+    if (isRemoteUrl(uri)) {
+      // Download remote file to a temp path, then read as base64
+      const tempPath = `${FileSystem.cacheDirectory}temp_photo_${Date.now()}.jpg`;
+      const download = await FileSystem.downloadAsync(uri, tempPath);
+      const base64 = await FileSystem.readAsStringAsync(download.uri, {
+        encoding: 'base64' as const,
+      });
+      // Clean up temp file
+      FileSystem.deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+      return base64;
+    }
     const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64' as const,
     });
     return base64;
   } catch {
