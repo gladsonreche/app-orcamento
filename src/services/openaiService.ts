@@ -149,27 +149,36 @@ PRICING GUIDELINES for ${params.city || 'Florida'}, ${params.state || 'FL'}:
 - If photos reveal additional issues, add line items with appropriate pricing
 - Be thorough: a real contractor would include ALL necessary work steps`;
 
-  // Convert photos to base64 (limit to 5 to manage costs)
+  // Prepare photos (limit to 5 to manage costs)
   const photosToSend = params.photoUris.slice(0, 5);
-  const base64Photos: string[] = [];
-
-  for (const uri of photosToSend) {
-    const b64 = await imageToBase64(uri);
-    if (b64) base64Photos.push(b64);
-  }
-
-  if (base64Photos.length === 0) {
-    throw new Error('No valid photos to analyze. Please upload at least one photo.');
-  }
 
   // Build content array with text + images (Responses API format)
   const userContent: any[] = [{ type: 'input_text', text: userText }];
+  let validPhotoCount = 0;
 
-  for (const b64 of base64Photos) {
-    userContent.push({
-      type: 'input_image',
-      image_url: `data:image/jpeg;base64,${b64}`,
-    });
+  for (const uri of photosToSend) {
+    if (isRemoteUrl(uri)) {
+      // Pass public URL directly to OpenAI (no need to download/re-encode)
+      userContent.push({
+        type: 'input_image',
+        image_url: uri,
+      });
+      validPhotoCount++;
+    } else {
+      // Local file: convert to base64
+      const b64 = await imageToBase64(uri);
+      if (b64) {
+        userContent.push({
+          type: 'input_image',
+          image_url: `data:image/jpeg;base64,${b64}`,
+        });
+        validPhotoCount++;
+      }
+    }
+  }
+
+  if (validPhotoCount === 0) {
+    throw new Error('No valid photos to analyze. Please upload at least one photo.');
   }
 
   const response = await fetch('https://api.openai.com/v1/responses', {
