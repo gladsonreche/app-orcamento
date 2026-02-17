@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Users, Plus, ChevronRight, Phone, Mail } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
+import { colors, typography, spacing, shadows, radii } from '../theme';
+import { Card, Avatar, SearchInput, EmptyState, IconButton, Button } from '../components/ui';
 
 interface ClientsScreenProps {
   navigation: any;
@@ -16,6 +12,7 @@ interface ClientsScreenProps {
 
 export default function ClientsScreen({ navigation }: ClientsScreenProps) {
   const { clients, deleteClient, getClientProjects } = useApp();
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
 
   const filtered = clients.filter(c =>
@@ -25,215 +22,122 @@ export default function ClientsScreen({ navigation }: ClientsScreenProps) {
   );
 
   const handleDelete = (id: string, name: string) => {
-    Alert.alert(
-      'Delete Client',
-      `Are you sure you want to delete ${name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteClient(id) },
-      ]
-    );
+    Alert.alert('Delete Client', `Are you sure you want to delete ${name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteClient(id) },
+    ]);
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.headerTitle}>Clients</Text>
-        <TouchableOpacity
-          style={styles.addButton}
+        <Button
+          title="Add"
           onPress={() => navigation.navigate('AddClient')}
-        >
-          <Text style={styles.addButtonText}>+ Add</Text>
-        </TouchableOpacity>
+          size="sm"
+          icon={<Plus size={16} color={colors.textOnPrimary} />}
+        />
       </View>
 
-      <View style={styles.searchContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search clients..."
-          placeholderTextColor="#999"
-          value={search}
-          onChangeText={setSearch}
-        />
+      {/* Search */}
+      <View style={styles.searchWrap}>
+        <SearchInput value={search} onChangeText={setSearch} placeholder="Search clients..." />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>👥</Text>
-            <Text style={styles.emptyTitle}>
-              {clients.length === 0 ? 'No clients yet' : 'No results found'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {clients.length === 0
-                ? 'Tap "+ Add" to add your first client'
-                : 'Try a different search term'}
-            </Text>
-          </View>
+          <EmptyState
+            icon={<Users size={48} color={colors.textTertiary} />}
+            title={clients.length === 0 ? 'No clients yet' : 'No results found'}
+            description={clients.length === 0 ? 'Tap "Add" to add your first client' : 'Try a different search term'}
+          />
         )}
 
         {filtered.map((client) => {
           const projectCount = getClientProjects(client.id).length;
           return (
-            <TouchableOpacity
+            <Card
               key={client.id}
-              style={styles.clientCard}
+              variant="elevated"
               onPress={() => navigation.navigate('AddClient', { clientId: client.id })}
-              onLongPress={() => handleDelete(client.id, client.name)}
+              style={styles.clientCard}
             >
-              <View style={styles.clientAvatar}>
-                <Text style={styles.clientInitials}>
-                  {client.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </Text>
+              <View style={styles.clientRow}>
+                <Avatar name={client.name} size="md" />
+                <View style={styles.clientInfo}>
+                  <Text style={styles.clientName}>{client.name}</Text>
+                  <Text style={styles.clientPhone}>{client.phone}</Text>
+                  {client.email ? <Text style={styles.clientEmail}>{client.email}</Text> : null}
+                </View>
+                <View style={styles.clientMeta}>
+                  <Text style={styles.projectCount}>{projectCount}</Text>
+                  <Text style={styles.projectLabel}>projects</Text>
+                </View>
+                <ChevronRight size={18} color={colors.textTertiary} />
               </View>
-              <View style={styles.clientInfo}>
-                <Text style={styles.clientName}>{client.name}</Text>
-                <Text style={styles.clientPhone}>{client.phone}</Text>
-                {client.email ? (
-                  <Text style={styles.clientEmail}>{client.email}</Text>
-                ) : null}
-              </View>
-              <View style={styles.clientStats}>
-                <Text style={styles.clientProjects}>{projectCount}</Text>
-                <Text style={styles.clientProjectsLabel}>projects</Text>
-              </View>
-            </TouchableOpacity>
+            </Card>
           );
         })}
-        <View style={{ height: 20 }} />
+        <View style={{ height: spacing['3xl'] }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
+  container: { flex: 1, backgroundColor: colors.bgSecondary },
   header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    paddingTop: 60,
+    backgroundColor: colors.bgPrimary,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.border,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
   },
-  addButton: {
-    backgroundColor: '#1a73e8',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+  searchWrap: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  searchContainer: {
-    backgroundColor: '#fff',
-    margin: 20,
-    marginBottom: 10,
-    borderRadius: 12,
+  content: { flex: 1, paddingHorizontal: spacing.lg },
+  clientCard: { marginBottom: spacing.sm },
+  clientRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    gap: spacing.md,
   },
-  searchIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#333',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-  clientCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 2,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  clientAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#1a73e8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  clientInitials: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  clientInfo: {
-    flex: 1,
-  },
+  clientInfo: { flex: 1 },
   clientName: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: 2,
   },
   clientPhone: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
   clientEmail: {
-    fontSize: 13,
-    color: '#999',
-    marginTop: 2,
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginTop: 1,
   },
-  clientStats: {
-    alignItems: 'center',
+  clientMeta: { alignItems: 'center', marginRight: spacing.xs },
+  projectCount: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.primary,
   },
-  clientProjects: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1a73e8',
-  },
-  clientProjectsLabel: {
-    fontSize: 12,
-    color: '#666',
+  projectLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
   },
 });

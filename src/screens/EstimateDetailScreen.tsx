@@ -9,8 +9,17 @@ import {
   Platform,
   Linking,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Send,
+  DollarSign,
+  CheckCircle,
+  FileText,
+} from 'lucide-react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { colors, typography, spacing, radii, shadows } from '../theme';
+import { ScreenHeader, Card, Button, Divider } from '../components/ui';
 import { useApp, Estimate, EstimateStatus, CompanyProfile } from '../context/AppContext';
 
 interface EstimateDetailScreenProps {
@@ -21,17 +30,17 @@ interface EstimateDetailScreenProps {
 const STATUS_FLOW: EstimateStatus[] = ['Draft', 'Sent', 'Approved', 'In Progress', 'Completed'];
 
 const STATUS_COLORS: Record<EstimateStatus, string> = {
-  Draft: '#1a73e8',
-  Sent: '#e37400',
-  Approved: '#34a853',
-  'In Progress': '#f57c00',
-  Completed: '#00897b',
+  Draft: colors.info,
+  Sent: colors.warning,
+  Approved: colors.success,
+  'In Progress': colors.accent,
+  Completed: colors.primary,
 };
 
 function buildPdfHtml(estimate: Estimate, projectName: string, clientName: string, address: string, serviceType: string, docType: 'Estimate' | 'Invoice', company: CompanyProfile, invoiceNumber?: string): string {
   const rows = estimate.lineItems.map(item => `
     <tr>
-      <td style="padding:8px;border-bottom:1px solid #eee;color:#1a73e8;font-weight:600;text-transform:uppercase;font-size:11px;">${item.category}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#1B5E20;font-weight:600;text-transform:uppercase;font-size:11px;">${item.category}</td>
       <td style="padding:8px;border-bottom:1px solid #eee;">${item.description}</td>
       <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${item.quantity} ${item.unit}</td>
       <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">$${item.unitPrice.toFixed(2)}</td>
@@ -51,27 +60,27 @@ function buildPdfHtml(estimate: Estimate, projectName: string, clientName: strin
   return `
     <html>
     <head><meta charset="utf-8"><style>
-      body { font-family: Helvetica, Arial, sans-serif; padding: 0; color: #333; margin: 0; }
-      h1 { color: #1a73e8; margin-bottom: 4px; }
-      .subtitle { color: #666; font-size: 14px; margin-bottom: 30px; }
+      body { font-family: Helvetica, Arial, sans-serif; padding: 0; color: #1F2937; margin: 0; }
+      h1 { color: #1B5E20; margin-bottom: 4px; }
+      .subtitle { color: #6B7280; font-size: 14px; margin-bottom: 30px; }
       .info-grid { display: flex; flex-wrap: wrap; margin-bottom: 24px; }
       .info-item { width: 50%; margin-bottom: 12px; }
-      .info-label { font-size: 12px; color: #555; text-transform: uppercase; font-weight: 600; }
+      .info-label { font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 600; }
       .info-value { font-size: 14px; font-weight: 600; }
       .items-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-      .items-table th { background: #f8f9fa; padding: 10px 8px; text-align: left; font-size: 12px; color: #666; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; }
+      .items-table th { background: #F9FAFB; padding: 10px 8px; text-align: left; font-size: 12px; color: #6B7280; text-transform: uppercase; border-bottom: 2px solid #E5E7EB; }
       .totals { margin-left: auto; width: 280px; }
       .total-row { display: flex; justify-content: space-between; padding: 6px 0; }
-      .grand-total { border-top: 2px solid #333; padding-top: 12px; margin-top: 8px; }
+      .grand-total { border-top: 2px solid #1F2937; padding-top: 12px; margin-top: 8px; }
       .grand-total .label { font-size: 18px; font-weight: 700; }
-      .grand-total .value { font-size: 22px; font-weight: 700; color: #1b6d2f; }
-      .notes { background: #f8f9fa; padding: 16px; border-radius: 8px; margin-top: 24px; }
-      .notes h3 { margin-top: 0; color: #333; font-size: 14px; }
-      .notes p { font-size: 13px; color: #666; line-height: 1.6; }
+      .grand-total .value { font-size: 22px; font-weight: 700; color: #059669; }
+      .notes { background: #F9FAFB; padding: 16px; border-radius: 8px; margin-top: 24px; }
+      .notes h3 { margin-top: 0; color: #1F2937; font-size: 14px; }
+      .notes p { font-size: 13px; color: #6B7280; line-height: 1.6; }
       .page-table { width: 100%; border-collapse: collapse; }
-      .page-table > thead > tr > td { padding: 20px 40px 10px; border-bottom: 1px solid #ddd; }
+      .page-table > thead > tr > td { padding: 20px 40px 10px; border-bottom: 1px solid #E5E7EB; }
       .page-table > tbody > tr > td { padding: 10px 40px 40px; }
-      .page-table > tfoot > tr > td { padding: 12px 40px; border-top: 1px solid #ddd; text-align: center; font-size: 12px; color: #555; font-weight: 500; }
+      .page-table > tfoot > tr > td { padding: 12px 40px; border-top: 1px solid #E5E7EB; text-align: center; font-size: 12px; color: #6B7280; font-weight: 500; }
     </style></head>
     <body>
       <table class="page-table">
@@ -80,9 +89,9 @@ function buildPdfHtml(estimate: Estimate, projectName: string, clientName: strin
             ${company.logoUri ? `<img src="${company.logoUri}" style="max-width:60px;max-height:60px;border-radius:8px;margin-right:16px;object-fit:contain;" />` : ''}
             <div>
               <h1 style="margin:0;font-size:18px;">${company.name || 'PhotoQuote AI'}</h1>
-              ${company.address ? `<p style="margin:2px 0;font-size:11px;color:#666;">${company.address}${company.city ? `, ${company.city}` : ''}${company.state ? `, ${company.state}` : ''} ${company.zip}</p>` : ''}
-              ${company.phone ? `<p style="margin:2px 0;font-size:11px;color:#666;">${company.phone}${company.email ? ` | ${company.email}` : ''}</p>` : ''}
-              ${company.licenseNumber ? `<p style="margin:2px 0;font-size:11px;color:#555;">License: ${company.licenseNumber}</p>` : ''}
+              ${company.address ? `<p style="margin:2px 0;font-size:11px;color:#6B7280;">${company.address}${company.city ? `, ${company.city}` : ''}${company.state ? `, ${company.state}` : ''} ${company.zip}</p>` : ''}
+              ${company.phone ? `<p style="margin:2px 0;font-size:11px;color:#6B7280;">${company.phone}${company.email ? ` | ${company.email}` : ''}</p>` : ''}
+              ${company.licenseNumber ? `<p style="margin:2px 0;font-size:11px;color:#6B7280;">License: ${company.licenseNumber}</p>` : ''}
             </div>
           </div>
         </td></tr></thead>
@@ -137,6 +146,7 @@ function buildShareText(estimate: Estimate, projectName: string, clientName: str
 
 export default function EstimateDetailScreen({ navigation, route }: EstimateDetailScreenProps) {
   const { estimates, getProject, getClient, updateEstimate, addInvoice, getEstimateInvoice, companyProfile } = useApp();
+  const insets = useSafeAreaInsets();
   const estimateId = route.params?.estimateId as string;
   const estimate = estimates.find(e => e.id === estimateId);
   const project = estimate ? getProject(estimate.projectId) : undefined;
@@ -146,14 +156,9 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
   if (!estimate) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Estimate</Text>
-          <View style={{ width: 50 }} />
-        </View>
+        <ScreenHeader title="Estimate" onBack={() => navigation.goBack()} />
         <View style={styles.emptyState}>
+          <FileText size={40} color={colors.textTertiary} strokeWidth={1.5} />
           <Text style={styles.emptyText}>Estimate not found</Text>
         </View>
       </View>
@@ -258,7 +263,7 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
     ]);
   };
 
-  const handleGenerateInvoice = () => {
+  const handleGenerateInvoice = async () => {
     if (invoice) {
       navigation.navigate('InvoiceDetail', { invoiceId: invoice.id });
       return;
@@ -278,22 +283,17 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
       notes: estimate.notes,
       status: 'Unpaid',
     });
-    navigation.navigate('InvoiceDetail', { invoiceId: newInvoice.id });
+    const inv = await newInvoice;
+    navigation.navigate('InvoiceDetail', { invoiceId: (inv as any).id });
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Estimate</Text>
-        <View style={{ width: 50 }} />
-      </View>
+      <ScreenHeader title="Estimate" onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Progress Bar */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Status</Text>
           <View style={styles.progressBar}>
             {STATUS_FLOW.map((status, index) => {
@@ -310,7 +310,7 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
                     <View style={[
                       styles.progressLine,
                       styles.progressLineBefore,
-                      { backgroundColor: isPast || isCurrent ? activeColor : '#e0e0e0' },
+                      { backgroundColor: isPast || isCurrent ? activeColor : colors.border },
                     ]} />
                   )}
 
@@ -320,7 +320,7 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
                       styles.progressCircle,
                       isPast && { backgroundColor: activeColor, borderColor: activeColor },
                       isCurrent && { backgroundColor: color, borderColor: color },
-                      isFuture && { backgroundColor: '#fff', borderColor: '#e0e0e0' },
+                      isFuture && { backgroundColor: colors.bgPrimary, borderColor: colors.border },
                     ]}
                     onPress={() => {
                       Alert.alert(
@@ -333,7 +333,7 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
                       );
                     }}
                   >
-                    {isPast && <Text style={styles.progressCheck}>✓</Text>}
+                    {isPast && <CheckCircle size={14} color={colors.textOnPrimary} />}
                     {isCurrent && <View style={styles.progressDotInner} />}
                   </TouchableOpacity>
 
@@ -342,25 +342,25 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
                     <View style={[
                       styles.progressLine,
                       styles.progressLineAfter,
-                      { backgroundColor: isPast ? activeColor : '#e0e0e0' },
+                      { backgroundColor: isPast ? activeColor : colors.border },
                     ]} />
                   )}
 
                   {/* Label */}
                   <Text style={[
                     styles.progressLabel,
-                    isCurrent && { color, fontWeight: '700' },
+                    isCurrent && { color, fontWeight: typography.weights.bold },
                     isPast && { color: activeColor },
-                    isFuture && { color: '#999' },
+                    isFuture && { color: colors.textTertiary },
                   ]}>{status}</Text>
                 </View>
               );
             })}
           </View>
-        </View>
+        </Card>
 
         {/* Project Info */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Project Details</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Client:</Text>
@@ -396,10 +396,10 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
             <Text style={styles.infoLabel}>Confidence:</Text>
             <Text style={styles.infoValue}>{estimate.confidence}%</Text>
           </View>
-        </View>
+        </Card>
 
         {/* Line Items */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Line Items ({estimate.lineItems.length})</Text>
           {estimate.lineItems.map((item, index) => (
             <View key={index} style={styles.lineItem}>
@@ -413,10 +413,10 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
               </Text>
             </View>
           ))}
-        </View>
+        </Card>
 
         {/* Totals */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Summary</Text>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
@@ -432,35 +432,36 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
               <Text style={styles.totalValue}>${estimate.margin.toFixed(2)}</Text>
             </View>
           )}
-          <View style={styles.divider} />
+          <Divider marginVertical={spacing.md} />
           <View style={styles.totalRow}>
             <Text style={styles.grandTotalLabel}>Total</Text>
             <Text style={styles.grandTotalValue}>${estimate.total.toFixed(2)}</Text>
           </View>
-        </View>
+        </Card>
 
         {/* Notes */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Notes</Text>
-          <Text style={styles.note}>{estimate.notes.split('\n').map(l => `• ${l}`).join('\n')}</Text>
-        </View>
+          <Text style={styles.note}>{estimate.notes.split('\n').map(l => `\u2022 ${l}`).join('\n')}</Text>
+        </Card>
 
         {/* Action Buttons: Send + Invoice side by side */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleSendEstimate}>
-            <Text style={styles.actionIcon}>📤</Text>
-            <Text style={styles.actionText}>Send Estimate</Text>
-          </TouchableOpacity>
+          <Button
+            title="Send Estimate"
+            onPress={handleSendEstimate}
+            size="lg"
+            icon={<Send size={18} color={colors.textOnPrimary} />}
+            style={styles.actionButton}
+          />
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.invoiceButton]}
+          <Button
+            title={invoice ? 'View Invoice' : 'Generate Invoice'}
             onPress={handleGenerateInvoice}
-          >
-            <Text style={styles.actionIcon}>$</Text>
-            <Text style={styles.actionText}>
-              {invoice ? 'View Invoice' : 'Generate Invoice'}
-            </Text>
-          </TouchableOpacity>
+            size="lg"
+            icon={<DollarSign size={18} color={colors.textOnPrimary} />}
+            style={{ ...styles.actionButton, backgroundColor: colors.success }}
+          />
         </View>
 
         <View style={{ height: 40 }} />
@@ -470,27 +471,41 @@ export default function EstimateDetailScreen({ navigation, route }: EstimateDeta
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: {
-    backgroundColor: '#fff', padding: 20, paddingTop: 60,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderBottomWidth: 1, borderBottomColor: '#e0e0e0',
+  container: {
+    flex: 1,
+    backgroundColor: colors.bgSecondary,
   },
-  backButton: { fontSize: 16, color: '#1a73e8' },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#333' },
-  content: { flex: 1, padding: 20 },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { fontSize: 16, color: '#999' },
+  content: {
+    flex: 1,
+    padding: spacing.lg,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  emptyText: {
+    fontSize: typography.sizes.md,
+    color: colors.textTertiary,
+  },
 
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16 },
-  cardTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 16 },
+  cardSpacing: {
+    marginBottom: spacing.lg,
+  },
+  cardTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
 
   // Progress bar
   progressBar: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
+    paddingHorizontal: spacing.xs,
   },
   progressStep: {
     alignItems: 'center',
@@ -500,19 +515,18 @@ const styles = StyleSheet.create({
   progressCircle: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: radii.full,
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.bgPrimary,
     zIndex: 1,
   },
-  progressCheck: { color: '#fff', fontSize: 14, fontWeight: '700' },
   progressDotInner: {
     width: 10,
     height: 10,
-    borderRadius: 5,
-    backgroundColor: '#fff',
+    borderRadius: radii.full,
+    backgroundColor: colors.bgPrimary,
   },
   progressLine: {
     position: 'absolute',
@@ -529,62 +543,104 @@ const styles = StyleSheet.create({
     right: -4,
   },
   progressLabel: {
-    fontSize: 10,
-    marginTop: 6,
+    fontSize: typography.sizes.xs - 2,
+    marginTop: spacing.xs + 2,
     textAlign: 'center',
-    color: '#999',
+    color: colors.textTertiary,
   },
 
   // Info
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  infoLabel: { fontSize: 14, color: '#666' },
-  infoValue: { fontSize: 14, color: '#333', fontWeight: '500', flex: 1, textAlign: 'right' },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  infoLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
+  infoValue: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+    flex: 1,
+    textAlign: 'right',
+  },
 
   // Line items
-  lineItem: { marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  lineItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  lineItemCategory: { fontSize: 12, fontWeight: '600', color: '#1a73e8', textTransform: 'uppercase' },
-  lineItemSubtotal: { fontSize: 16, fontWeight: '600', color: '#333' },
-  lineItemDescription: { fontSize: 15, color: '#333', marginBottom: 4 },
-  lineItemDetails: { fontSize: 13, color: '#666' },
+  lineItem: {
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  lineItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  lineItemCategory: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+    textTransform: 'uppercase',
+  },
+  lineItemSubtotal: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  lineItemDescription: {
+    fontSize: typography.sizes.base,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  lineItemDetails: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
 
   // Totals
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  totalLabel: { fontSize: 15, color: '#666' },
-  totalValue: { fontSize: 15, color: '#333', fontWeight: '500' },
-  divider: { height: 1, backgroundColor: '#e0e0e0', marginVertical: 12 },
-  grandTotalLabel: { fontSize: 20, fontWeight: '700', color: '#333' },
-  grandTotalValue: { fontSize: 24, fontWeight: '700', color: '#1b6d2f' },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  totalLabel: {
+    fontSize: typography.sizes.base,
+    color: colors.textSecondary,
+  },
+  totalValue: {
+    fontSize: typography.sizes.base,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+  },
+  grandTotalLabel: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+  },
+  grandTotalValue: {
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.bold,
+    color: colors.success,
+  },
 
-  note: { fontSize: 14, color: '#666', lineHeight: 22 },
+  note: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: typography.lineHeights.base,
+  },
 
-  // Action row (PDF + Invoice side by side)
+  // Action row (Send + Invoice side by side)
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#1a73e8',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginHorizontal: 4,
   },
-  invoiceButton: {
-    backgroundColor: '#34a853',
-  },
-  actionIcon: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  actionText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
 });

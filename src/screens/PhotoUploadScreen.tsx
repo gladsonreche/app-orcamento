@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -12,7 +11,19 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Camera,
+  ImageIcon,
+  Lightbulb,
+  X,
+  Plus,
+  Sparkles,
+  CameraIcon,
+} from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { colors, typography, spacing, radii, shadows } from '../theme';
+import { ScreenHeader, Card, Button, Input, EmptyState, Divider } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { storageService } from '../services/storage';
@@ -48,6 +59,7 @@ interface PhotoUploadScreenProps {
 export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScreenProps) {
   const { updateProject, getProject } = useApp();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const projectId = route.params?.projectId as string | undefined;
   const project = projectId ? getProject(projectId) : undefined;
 
@@ -204,19 +216,14 @@ export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScre
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Upload Photos</Text>
-        <View style={{ width: 50 }} />
-      </View>
+      <ScreenHeader title="Upload Photos" onBack={() => navigation.goBack()} />
 
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Project Banner */}
         {project && (
           <View style={styles.projectBanner}>
             <Text style={styles.projectBannerTitle}>{project.name}</Text>
@@ -226,28 +233,42 @@ export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScre
           </View>
         )}
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoIcon}>💡</Text>
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Take quality photos</Text>
-            <Text style={styles.infoText}>
-              Upload at least 1 photo of the jobsite. More photos = better AI accuracy.
-            </Text>
+        {/* Info Card */}
+        <Card variant="outlined" style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconContainer}>
+              <Lightbulb size={20} color={colors.warning} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>Take quality photos</Text>
+              <Text style={styles.infoText}>
+                Upload at least 1 photo of the jobsite. More photos = better AI accuracy.
+              </Text>
+            </View>
           </View>
-        </View>
+        </Card>
 
+        {/* Upload Buttons */}
         <View style={styles.uploadButtons}>
           <TouchableOpacity style={styles.uploadButton} onPress={takePhoto}>
-            <Text style={styles.uploadIcon}>📷</Text>
+            <Camera size={32} color={colors.primary} strokeWidth={1.5} />
             <Text style={styles.uploadText}>Take Photo</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-            <Text style={styles.uploadIcon}>🖼️</Text>
+            <ImageIcon size={32} color={colors.primary} strokeWidth={1.5} />
             <Text style={styles.uploadText}>Choose from Gallery</Text>
           </TouchableOpacity>
         </View>
 
+        {uploading && (
+          <View style={styles.uploadingIndicator}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.uploadingText}>Uploading...</Text>
+          </View>
+        )}
+
+        {/* Photos Grid */}
         {photos.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Photos ({photos.length}/30)</Text>
@@ -259,7 +280,7 @@ export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScre
                     style={styles.removeButton}
                     onPress={() => setPhotos(photos.filter((_, i) => i !== index))}
                   >
-                    <Text style={styles.removeButtonText}>✕</Text>
+                    <X size={14} color={colors.textOnPrimary} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -267,19 +288,19 @@ export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScre
           </View>
         )}
 
+        {/* Empty State */}
         {photos.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📸</Text>
-            <Text style={styles.emptyTitle}>No photos yet</Text>
-            <Text style={styles.emptyText}>
-              Upload photos to help AI generate an accurate estimate
-            </Text>
-          </View>
+          <EmptyState
+            icon={<CameraIcon size={48} color={colors.textTertiary} strokeWidth={1.5} />}
+            title="No photos yet"
+            description="Upload photos to help AI generate an accurate estimate"
+          />
         )}
 
+        {/* Service Selection (shown after photos uploaded) */}
         {photos.length >= 1 && (
           <View style={styles.section}>
-            <Text style={styles.label}>Service Types * (select all that apply)</Text>
+            <Text style={styles.fieldLabel}>Service Types * (select all that apply)</Text>
             <View style={styles.serviceOptions}>
               {SERVICE_OPTIONS.map((service) => {
                 const isSelected = selectedServices.includes(service);
@@ -304,25 +325,29 @@ export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScre
                 <View key={custom} style={styles.customServiceTag}>
                   <Text style={styles.customServiceTagText}>{custom}</Text>
                   <TouchableOpacity onPress={() => setSelectedServices(prev => prev.filter(s => s !== custom))}>
-                    <Text style={styles.customServiceRemove}>✕</Text>
+                    <X size={14} color={colors.error} />
                   </TouchableOpacity>
                 </View>
               ))
             }
 
             {/* Add custom service */}
-            <Text style={styles.label}>Don't see your service? Add it:</Text>
+            <Text style={styles.fieldLabel}>Don't see your service? Add it:</Text>
             <View style={styles.customServiceRow}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder="e.g., Pool Renovation"
-                placeholderTextColor="#999"
-                value={customService}
-                onChangeText={setCustomService}
+              <View style={{ flex: 1 }}>
+                <Input
+                  placeholder="e.g., Pool Renovation"
+                  value={customService}
+                  onChangeText={setCustomService}
+                />
+              </View>
+              <Button
+                title="Add"
+                onPress={addCustomService}
+                size="md"
+                icon={<Plus size={16} color={colors.textOnPrimary} />}
+                style={styles.addCustomButton}
               />
-              <TouchableOpacity style={styles.addCustomButton} onPress={addCustomService}>
-                <Text style={styles.addCustomButtonText}>+ Add</Text>
-              </TouchableOpacity>
             </View>
 
             {/* Selected summary */}
@@ -335,40 +360,33 @@ export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScre
               </View>
             )}
 
-            <Text style={styles.label}>Describe the Service for AI *</Text>
-            <Text style={styles.labelHint}>
-              Be specific! The AI uses this description to generate accurate line items and pricing.
-            </Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
+            <Input
+              label="Describe the Service for AI *"
+              helperText="Be specific! The AI uses this description to generate accurate line items and pricing."
               placeholder="Describe what needs to be done in detail... e.g., Remove old tile in master bathroom (8x10 ft), install new porcelain tile on floor and walls up to 4ft, replace grout, add waterproof membrane behind shower..."
-              placeholderTextColor="#999"
               value={serviceDescription}
               onChangeText={setServiceDescription}
               multiline
               numberOfLines={6}
-              textAlignVertical="top"
+              style={styles.textArea}
+              containerStyle={styles.inputSpacing}
             />
 
-            <Text style={styles.label}>Manual Measurements (Optional)</Text>
+            <Text style={styles.fieldLabel}>Manual Measurements (Optional)</Text>
             <View style={styles.measurementInputs}>
               <View style={styles.measurementInput}>
-                <Text style={styles.measurementLabel}>Square Feet</Text>
-                <TextInput
-                  style={styles.input}
+                <Input
+                  label="Square Feet"
                   placeholder="e.g., 120"
-                  placeholderTextColor="#999"
                   value={squareFeet}
                   onChangeText={setSquareFeet}
                   keyboardType="numeric"
                 />
               </View>
               <View style={styles.measurementInput}>
-                <Text style={styles.measurementLabel}>Linear Feet</Text>
-                <TextInput
-                  style={styles.input}
+                <Input
+                  label="Linear Feet"
                   placeholder="e.g., 40"
-                  placeholderTextColor="#999"
                   value={linearFeet}
                   onChangeText={setLinearFeet}
                   keyboardType="numeric"
@@ -378,13 +396,18 @@ export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScre
           </View>
         )}
 
+        {/* Generate Button */}
         {photos.length >= 1 && (
-          <TouchableOpacity
-            style={[styles.generateButton, selectedServices.length === 0 && styles.generateButtonDisabled]}
+          <Button
+            title="Generate AI Estimate"
             onPress={handleGenerateEstimate}
-          >
-            <Text style={styles.generateButtonText}>✨ Generate AI Estimate</Text>
-          </TouchableOpacity>
+            size="lg"
+            fullWidth
+            disabled={selectedServices.length === 0}
+            loading={uploading}
+            icon={<Sparkles size={18} color={colors.textOnPrimary} />}
+            style={{ backgroundColor: colors.success, marginTop: spacing.lg }}
+          />
         )}
 
         <View style={{ height: 100 }} />
@@ -394,94 +417,218 @@ export default function PhotoUploadScreen({ navigation, route }: PhotoUploadScre
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: {
-    backgroundColor: '#fff', padding: 20, paddingTop: 60,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderBottomWidth: 1, borderBottomColor: '#e0e0e0',
+  container: {
+    flex: 1,
+    backgroundColor: colors.bgSecondary,
   },
-  backButton: { fontSize: 16, color: '#1a73e8' },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#333' },
-  content: { flex: 1, padding: 20 },
+  content: {
+    flex: 1,
+    padding: spacing.lg,
+  },
   projectBanner: {
-    backgroundColor: '#1a73e8', borderRadius: 12, padding: 16, marginBottom: 16,
+    backgroundColor: colors.primary,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
   },
-  projectBannerTitle: { fontSize: 18, fontWeight: '600', color: '#fff' },
-  projectBannerAddress: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+  projectBannerTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textOnPrimary,
+  },
+  projectBannerAddress: {
+    fontSize: typography.sizes.sm,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: spacing.xs,
+  },
   infoCard: {
-    backgroundColor: '#e8f0fe', borderRadius: 12, padding: 16,
-    flexDirection: 'row', marginBottom: 20,
+    marginBottom: spacing.xl,
   },
-  infoIcon: { fontSize: 24, marginRight: 12 },
-  infoContent: { flex: 1 },
-  infoTitle: { fontSize: 16, fontWeight: '600', color: '#1a73e8', marginBottom: 4 },
-  infoText: { fontSize: 14, color: '#666' },
-  uploadButtons: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  infoIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.full,
+    backgroundColor: colors.warningBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  infoText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: typography.lineHeights.base,
+  },
+  uploadButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing['2xl'],
+    gap: spacing.md,
+  },
   uploadButton: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 24,
-    alignItems: 'center', marginHorizontal: 6, borderWidth: 2,
-    borderColor: '#1a73e8', borderStyle: 'dashed',
+    flex: 1,
+    backgroundColor: colors.bgPrimary,
+    borderRadius: radii.lg,
+    paddingVertical: spacing['2xl'],
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
   },
-  uploadIcon: { fontSize: 40, marginBottom: 8 },
-  uploadText: { fontSize: 14, fontWeight: '600', color: '#1a73e8' },
-  section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 16 },
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
-  photoContainer: { width: '31%', aspectRatio: 1, margin: 4, position: 'relative' },
-  photo: { width: '100%', height: '100%', borderRadius: 8 },
+  uploadText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+    marginTop: spacing.sm,
+  },
+  uploadingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  uploadingText: {
+    fontSize: typography.sizes.sm,
+    color: colors.primary,
+    fontWeight: typography.weights.medium,
+  },
+  section: {
+    marginBottom: spacing['2xl'],
+  },
+  sectionTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -spacing.xs,
+  },
+  photoContainer: {
+    width: '31%',
+    aspectRatio: 1,
+    margin: spacing.xs,
+    position: 'relative',
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: radii.md,
+  },
   removeButton: {
-    position: 'absolute', top: 4, right: 4, backgroundColor: '#ff0000',
-    borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center',
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    backgroundColor: colors.error,
+    borderRadius: radii.full,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  removeButtonText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '600', color: '#333', marginBottom: 8 },
-  emptyText: { fontSize: 14, color: '#666', textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '500', color: '#333', marginBottom: 8, marginTop: 12 },
-  labelHint: { fontSize: 12, color: '#666', marginBottom: 8, fontStyle: 'italic' },
-  serviceOptions: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+  fieldLabel: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+  },
+  serviceOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   serviceButton: {
-    backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 14,
-    paddingVertical: 10, marginRight: 8, marginBottom: 8,
-    borderWidth: 1, borderColor: '#e0e0e0',
+    backgroundColor: colors.bgPrimary,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
-  serviceButtonActive: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  serviceButtonText: { fontSize: 13, color: '#333', fontWeight: '500' },
-  serviceButtonTextActive: { color: '#fff' },
-  // Custom service
-  customServiceRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  serviceButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  serviceButtonText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+  },
+  serviceButtonTextActive: {
+    color: colors.textOnPrimary,
+  },
+  customServiceRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
   addCustomButton: {
-    backgroundColor: '#1a73e8', borderRadius: 8, paddingHorizontal: 16,
-    paddingVertical: 12, marginLeft: 8,
+    marginTop: 0,
   },
-  addCustomButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   customServiceTag: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#e8f0fe',
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8,
-    marginBottom: 8, alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+    alignSelf: 'flex-start',
+    gap: spacing.sm,
   },
-  customServiceTagText: { fontSize: 13, color: '#1a73e8', fontWeight: '500', marginRight: 8 },
-  customServiceRemove: { fontSize: 14, color: '#d32f2f', fontWeight: '600' },
-  // Selected summary
+  customServiceTagText: {
+    fontSize: typography.sizes.sm,
+    color: colors.primary,
+    fontWeight: typography.weights.medium,
+  },
   selectedSummary: {
-    backgroundColor: '#e6f4ea', borderRadius: 8, padding: 12, marginTop: 4, marginBottom: 8,
+    backgroundColor: colors.successBg,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
-  selectedSummaryLabel: { fontSize: 12, color: '#34a853', fontWeight: '600', marginBottom: 4 },
-  selectedSummaryText: { fontSize: 13, color: '#333' },
-  measurementInputs: { flexDirection: 'row', justifyContent: 'space-between' },
-  measurementInput: { flex: 1, marginHorizontal: 4 },
-  measurementLabel: { fontSize: 12, color: '#666', marginBottom: 6 },
-  input: {
-    backgroundColor: '#fff', borderRadius: 8, padding: 12,
-    borderWidth: 1, borderColor: '#e0e0e0', fontSize: 14, color: '#333',
+  selectedSummaryLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.success,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing.xs,
+  },
+  selectedSummaryText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+  },
+  inputSpacing: {
+    marginBottom: spacing.md,
   },
   textArea: {
-    minHeight: 120, borderRadius: 12, padding: 16, marginBottom: 16,
+    minHeight: 120,
+    textAlignVertical: 'top',
   },
-  generateButton: {
-    backgroundColor: '#34a853', borderRadius: 12, padding: 18, alignItems: 'center', marginTop: 16,
+  measurementInputs: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
-  generateButtonDisabled: { backgroundColor: '#a0c4ab' },
-  generateButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  measurementInput: {
+    flex: 1,
+  },
 });

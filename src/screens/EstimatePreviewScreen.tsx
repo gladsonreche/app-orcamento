@@ -11,8 +11,21 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  CheckCircle,
+  X,
+  Plus,
+  AlertTriangle,
+  ArrowLeft,
+  Save,
+  Info,
+  Check,
+} from 'lucide-react-native';
+import { colors, typography, spacing, radii, shadows } from '../theme';
+import { ScreenHeader, Card, Button, Input, Divider } from '../components/ui';
 import { useApp } from '../context/AppContext';
-import { generateAIEstimate } from '../services/openaiService';
+import { generateAIEstimate, PhotoValidationError } from '../services/openaiService';
 
 interface EditableLineItem {
   id: string;
@@ -451,6 +464,7 @@ function buildLineItems(
 
 export default function EstimatePreviewScreen({ navigation, route }: EstimatePreviewScreenProps) {
   const { getProject, getClient, addEstimate, companyProfile } = useApp();
+  const insets = useSafeAreaInsets();
   const projectId = route.params?.projectId as string | undefined;
   const project = projectId ? getProject(projectId) : undefined;
   const client = project ? getClient(project.clientId) : undefined;
@@ -490,6 +504,9 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
   const [isLoadingAI, setIsLoadingAI] = useState(true);
   const [aiConfidence, setAiConfidence] = useState(0);
   const [aiSource, setAiSource] = useState<'ai' | 'fallback'>('fallback');
+  const [photoAnalysis, setPhotoAnalysis] = useState('');
+  const [photoRejected, setPhotoRejected] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const aiCalled = useRef(false);
 
   useEffect(() => {
@@ -527,13 +544,20 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
         setLineItems(aiItems);
         setAiConfidence(result.confidence);
         setAiSource('ai');
+        setPhotoAnalysis(result.photoAnalysis || '');
         if (result.notes) {
           setNotes(result.notes);
         }
       } catch (err) {
-        console.log('AI estimate failed, using local fallback:', err);
-        setAiConfidence(92);
-        setAiSource('fallback');
+        if (err instanceof PhotoValidationError) {
+          setPhotoRejected(true);
+          setRejectionReason(err.message);
+          setPhotoAnalysis(err.photoAnalysis);
+        } else {
+          console.log('AI estimate failed, using local fallback:', err);
+          setAiSource('fallback');
+          setAiConfidence(92);
+        }
       } finally {
         setIsLoadingAI(false);
       }
@@ -600,18 +624,13 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
     ]);
   };
 
+  // ── Loading State ──
   if (isLoadingAI) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Estimate</Text>
-          <View style={{ width: 50 }} />
-        </View>
+        <ScreenHeader title="Edit Estimate" onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1a73e8" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingTitle}>AI analyzing your project...</Text>
           <Text style={styles.loadingText}>
             Reviewing {project?.photos.length ?? 0} photo(s) and project details to generate an accurate estimate.
@@ -621,27 +640,80 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
     );
   }
 
+  // ── Photo Rejected State ──
+  if (photoRejected) {
+    return (
+      <View style={styles.container}>
+        <ScreenHeader title="Photo Review" onBack={() => navigation.goBack()} />
+        <ScrollView style={styles.scrollContent} contentContainerStyle={styles.rejectedScrollContent}>
+          <View style={styles.rejectedIconContainer}>
+            <AlertTriangle size={36} color={colors.error} />
+          </View>
+          <Text style={styles.rejectedTitle}>Invalid Photos Detected</Text>
+          <Text style={styles.rejectedSubtitle}>
+            The photos you uploaded are not related to construction or renovation work and cannot be used to generate an estimate.
+          </Text>
+
+          <Card variant="outlined" style={styles.rejectedCard}>
+            <Text style={styles.rejectedCardTitle}>What We Detected</Text>
+            <Text style={styles.rejectedCardText}>{photoAnalysis || 'No analysis available.'}</Text>
+          </Card>
+
+          <Card variant="outlined" style={styles.rejectedCard}>
+            <Text style={styles.rejectedCardTitle}>Why It Was Rejected</Text>
+            <Text style={styles.rejectedCardText}>{rejectionReason || 'The photos do not show construction-related content.'}</Text>
+          </Card>
+
+          <Card style={styles.rejectedHintCard}>
+            <Text style={styles.rejectedHintTitle}>Valid Photos Include:</Text>
+            <Text style={styles.rejectedHintText}>
+              {'\u2022'} Buildings, rooms, walls, floors, ceilings{'\n'}
+              {'\u2022'} Roofs, foundations, structural elements{'\n'}
+              {'\u2022'} Plumbing, electrical, HVAC systems{'\n'}
+              {'\u2022'} Damage to repair (water, mold, cracks){'\n'}
+              {'\u2022'} Landscaping, fences, concrete, driveways{'\n'}
+              {'\u2022'} Property exteriors and interiors
+            </Text>
+          </Card>
+
+          <Button
+            title="Upload New Photos"
+            onPress={() => navigation.goBack()}
+            size="lg"
+            fullWidth
+            style={styles.actionBtnSpacing}
+          />
+
+          <Button
+            title="Back to Projects"
+            onPress={() => navigation.popToTop()}
+            variant="outline"
+            size="lg"
+            fullWidth
+          />
+
+          <View style={{ height: 60 }} />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ── Main Estimate Editor ──
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Estimate</Text>
-        <View style={{ width: 50 }} />
-      </View>
+      <ScreenHeader title="Edit Estimate" onBack={() => navigation.goBack()} />
 
       <ScrollView
-        style={styles.content}
+        style={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Success Banner */}
         <View style={styles.successBanner}>
-          <Text style={styles.successIcon}>✅</Text>
+          <CheckCircle size={28} color={colors.success} style={styles.successIconSpacing} />
           <View style={styles.successContent}>
             <Text style={styles.successTitle}>Estimate Generated!</Text>
             <Text style={styles.successText}>
@@ -654,31 +726,37 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
 
         {/* Service Description reminder */}
         {description.trim().length > 0 && (
-          <View style={styles.descriptionBanner}>
-            <Text style={styles.descriptionLabel}>Your description (used by AI):</Text>
+          <Card variant="outlined" style={styles.descriptionBanner}>
+            <View style={styles.descriptionRow}>
+              <Info size={16} color={colors.info} style={{ marginRight: spacing.sm }} />
+              <Text style={styles.descriptionLabel}>Your description (used by AI):</Text>
+            </View>
             <Text style={styles.descriptionText}>{description}</Text>
-          </View>
+          </Card>
         )}
 
         {/* Difficulty Factor */}
         {difficultyMultiplier > 1.0 && (
           <View style={styles.difficultyBanner}>
-            <Text style={styles.difficultyLabel}>
-              Difficulty: {difficultyLabel} (+{Math.round((difficultyMultiplier - 1) * 100)}%)
-            </Text>
-            <Text style={styles.difficultyText}>
-              Prices adjusted for: {conditions.propertyType}
-              {conditions.accessLevel !== 'Easy' ? `, ${conditions.accessLevel} access` : ''}
-              {parseInt(conditions.floorLevel) > 0 ? `, Floor ${conditions.floorLevel}` : ''}
-              {parseInt(conditions.floorLevel) >= 2 && !conditions.hasElevator ? ', No elevator' : ''}
-              {conditions.parkingType !== 'Easy' ? `, ${conditions.parkingType} parking` : ''}
-              {locationMult > 1.0 ? `, ${locationLabel} (${conditions.city || 'ZIP ' + conditions.zip})` : ''}
-            </Text>
+            <AlertTriangle size={16} color={colors.warning} style={{ marginRight: spacing.sm }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.difficultyLabel}>
+                Difficulty: {difficultyLabel} (+{Math.round((difficultyMultiplier - 1) * 100)}%)
+              </Text>
+              <Text style={styles.difficultyText}>
+                Prices adjusted for: {conditions.propertyType}
+                {conditions.accessLevel !== 'Easy' ? `, ${conditions.accessLevel} access` : ''}
+                {parseInt(conditions.floorLevel) > 0 ? `, Floor ${conditions.floorLevel}` : ''}
+                {parseInt(conditions.floorLevel) >= 2 && !conditions.hasElevator ? ', No elevator' : ''}
+                {conditions.parkingType !== 'Easy' ? `, ${conditions.parkingType} parking` : ''}
+                {locationMult > 1.0 ? `, ${locationLabel} (${conditions.city || 'ZIP ' + conditions.zip})` : ''}
+              </Text>
+            </View>
           </View>
         )}
 
         {/* Project Info */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Project Details</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Client:</Text>
@@ -698,10 +776,10 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
             <Text style={styles.infoLabel}>Services:</Text>
             <Text style={styles.infoValue}>{services.join(', ') || 'N/A'}</Text>
           </View>
-        </View>
+        </Card>
 
         {/* Editable Line Items */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>Line Items ({lineItems.length})</Text>
             <Text style={styles.editHint}>Tap to edit</Text>
@@ -710,9 +788,11 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
           {lineItems.map((item, index) => (
             <View key={item.id} style={styles.lineItem}>
               <View style={styles.lineItemTopRow}>
-                <Text style={styles.lineItemIndex}>{index + 1}</Text>
+                <View style={styles.lineItemIndex}>
+                  <Text style={styles.lineItemIndexText}>{index + 1}</Text>
+                </View>
                 <TouchableOpacity onPress={() => removeLineItem(item.id)} style={styles.removeItemBtn}>
-                  <Text style={styles.removeItemText}>✕</Text>
+                  <X size={14} color={colors.error} />
                 </TouchableOpacity>
               </View>
 
@@ -722,7 +802,7 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
                 value={item.category}
                 onChangeText={(v) => updateLineItem(item.id, 'category', v)}
                 placeholder="Item title..."
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textTertiary}
               />
 
               <Text style={styles.fieldLabel}>Description</Text>
@@ -731,7 +811,7 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
                 value={item.description}
                 onChangeText={(v) => updateLineItem(item.id, 'description', v)}
                 placeholder="Describe the work..."
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textTertiary}
                 multiline
                 textAlignVertical="top"
               />
@@ -745,7 +825,7 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
                     onChangeText={(v) => updateLineItem(item.id, 'quantity', parseFloat(v) || 0)}
                     keyboardType="numeric"
                     placeholder="0"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.textTertiary}
                   />
                 </View>
                 <View style={styles.valueCol}>
@@ -755,7 +835,7 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
                     value={item.unit}
                     onChangeText={(v) => updateLineItem(item.id, 'unit', v)}
                     placeholder="sqft"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.textTertiary}
                   />
                 </View>
                 <View style={styles.valueCol}>
@@ -766,7 +846,7 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
                     onChangeText={(v) => updateLineItem(item.id, 'unitPrice', parseFloat(v) || 0)}
                     keyboardType="numeric"
                     placeholder="0.00"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.textTertiary}
                   />
                 </View>
               </View>
@@ -776,7 +856,7 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
                 onPress={() => updateLineItem(item.id, 'taxable', !item.taxable)}
               >
                 <View style={[styles.taxCheckbox, item.taxable && styles.taxCheckboxActive]}>
-                  {item.taxable && <Text style={styles.taxCheckmark}>✓</Text>}
+                  {item.taxable && <Check size={14} color={colors.textOnPrimary} />}
                 </View>
                 <Text style={styles.taxToggleLabel}>Taxable</Text>
               </TouchableOpacity>
@@ -789,27 +869,28 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
           ))}
 
           <TouchableOpacity style={styles.addItemButton} onPress={addLineItem}>
-            <Text style={styles.addItemText}>+ Add Line Item</Text>
+            <Plus size={18} color={colors.primary} />
+            <Text style={styles.addItemText}>Add Line Item</Text>
           </TouchableOpacity>
-        </View>
+        </Card>
 
         {/* Rates */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Rates</Text>
           <View style={styles.ratesRow}>
             <View style={styles.rateCol}>
               <Text style={styles.fieldLabel}>Tax Rate (%)</Text>
-              <TextInput style={styles.editInputSmall} value={taxRate} onChangeText={setTaxRate} keyboardType="numeric" placeholder="7.0" placeholderTextColor="#999" />
+              <TextInput style={styles.editInputSmall} value={taxRate} onChangeText={setTaxRate} keyboardType="numeric" placeholder="7.0" placeholderTextColor={colors.textTertiary} />
             </View>
             <View style={styles.rateCol}>
               <Text style={styles.fieldLabel}>Margin (%)</Text>
-              <TextInput style={styles.editInputSmall} value={marginRate} onChangeText={setMarginRate} keyboardType="numeric" placeholder="20.0" placeholderTextColor="#999" />
+              <TextInput style={styles.editInputSmall} value={marginRate} onChangeText={setMarginRate} keyboardType="numeric" placeholder="20.0" placeholderTextColor={colors.textTertiary} />
             </View>
           </View>
-        </View>
+        </Card>
 
         {/* Totals */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Summary</Text>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
@@ -825,35 +906,45 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
               <Text style={styles.totalValue}>${totals.margin.toFixed(2)}</Text>
             </View>
           )}
-          <View style={styles.divider} />
+          <Divider marginVertical={spacing.md} />
           <View style={styles.totalRow}>
             <Text style={styles.grandTotalLabel}>Total</Text>
             <Text style={styles.grandTotalValue}>${totals.total.toFixed(2)}</Text>
           </View>
-        </View>
+        </Card>
 
         {/* Notes */}
-        <View style={styles.card}>
+        <Card style={styles.cardSpacing}>
           <Text style={styles.cardTitle}>Notes & Assumptions</Text>
           <TextInput
             style={[styles.editInput, styles.editTextArea, { minHeight: 120 }]}
             value={notes}
             onChangeText={setNotes}
             placeholder="Add notes about this estimate..."
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textTertiary}
             multiline
             textAlignVertical="top"
           />
-        </View>
+        </Card>
 
         {/* Actions */}
-        <TouchableOpacity style={styles.primaryButton} onPress={handleSaveEstimate}>
-          <Text style={styles.primaryButtonText}>Save Estimate</Text>
-        </TouchableOpacity>
+        <Button
+          title="Save Estimate"
+          onPress={handleSaveEstimate}
+          size="lg"
+          fullWidth
+          icon={<Save size={18} color={colors.textOnPrimary} />}
+          style={styles.actionBtnSpacing}
+        />
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.secondaryButtonText}>← Back to Photos</Text>
-        </TouchableOpacity>
+        <Button
+          title="Back to Photos"
+          onPress={() => navigation.goBack()}
+          variant="outline"
+          size="lg"
+          fullWidth
+          icon={<ArrowLeft size={18} color={colors.primary} />}
+        />
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -862,95 +953,387 @@ export default function EstimatePreviewScreen({ navigation, route }: EstimatePre
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: {
-    backgroundColor: '#fff', padding: 20, paddingTop: 60,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderBottomWidth: 1, borderBottomColor: '#e0e0e0',
+  container: {
+    flex: 1,
+    backgroundColor: colors.bgSecondary,
   },
-  backButton: { fontSize: 16, color: '#1a73e8' },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#333' },
-  content: { flex: 1, padding: 20 },
+  scrollContent: {
+    flex: 1,
+    padding: spacing.lg,
+  },
 
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  loadingTitle: { fontSize: 20, fontWeight: '600', color: '#1a73e8', marginTop: 24, marginBottom: 8 },
-  loadingText: { fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22 },
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing['4xl'],
+  },
+  loadingTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+    marginTop: spacing['2xl'],
+    marginBottom: spacing.sm,
+  },
+  loadingText: {
+    fontSize: typography.sizes.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: typography.lineHeights.base,
+  },
 
+  // Rejected
+  rejectedScrollContent: {
+    alignItems: 'center',
+    paddingBottom: spacing['4xl'],
+  },
+  rejectedIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: radii.full,
+    backgroundColor: colors.errorBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing['2xl'],
+    marginBottom: spacing.xl,
+    borderWidth: 3,
+    borderColor: colors.error,
+  },
+  rejectedTitle: {
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.bold,
+    color: colors.error,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  rejectedSubtitle: {
+    fontSize: typography.sizes.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: typography.lineHeights.base,
+    marginBottom: spacing['2xl'],
+    paddingHorizontal: spacing.sm,
+  },
+  rejectedCard: {
+    width: '100%',
+    marginBottom: spacing.md,
+  },
+  rejectedCardTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  rejectedCardText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: typography.lineHeights.base,
+  },
+  rejectedHintCard: {
+    width: '100%',
+    marginBottom: spacing['2xl'],
+    backgroundColor: colors.infoBg,
+  },
+  rejectedHintTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.info,
+    marginBottom: spacing.sm,
+  },
+  rejectedHintText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    lineHeight: typography.lineHeights['2xl'],
+  },
+
+  // Success banner
   successBanner: {
-    backgroundColor: '#e6f4ea', borderRadius: 12, padding: 16,
-    flexDirection: 'row', marginBottom: 16, borderWidth: 1, borderColor: '#34a853',
+    backgroundColor: colors.successBg,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.success,
   },
-  successIcon: { fontSize: 32, marginRight: 12 },
-  successContent: { flex: 1 },
-  successTitle: { fontSize: 18, fontWeight: '600', color: '#34a853', marginBottom: 4 },
-  successText: { fontSize: 14, color: '#666', lineHeight: 20 },
+  successIconSpacing: {
+    marginRight: spacing.md,
+    marginTop: spacing.xs,
+  },
+  successContent: {
+    flex: 1,
+  },
+  successTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.success,
+    marginBottom: spacing.xs,
+  },
+  successText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: typography.lineHeights.base,
+  },
 
+  // Description banner
   descriptionBanner: {
-    backgroundColor: '#e8f0fe', borderRadius: 12, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: '#1a73e8',
+    marginBottom: spacing.lg,
   },
-  descriptionLabel: { fontSize: 12, fontWeight: '600', color: '#1a73e8', marginBottom: 6 },
-  descriptionText: { fontSize: 14, color: '#333', lineHeight: 20 },
+  descriptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  descriptionLabel: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.info,
+  },
+  descriptionText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    lineHeight: typography.lineHeights.base,
+  },
 
+  // Difficulty banner
   difficultyBanner: {
-    backgroundColor: '#fef7e0', borderRadius: 12, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: '#fbbc04',
+    backgroundColor: colors.warningBg,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
-  difficultyLabel: { fontSize: 14, fontWeight: '700', color: '#e37400', marginBottom: 4 },
-  difficultyText: { fontSize: 13, color: '#666' },
+  difficultyLabel: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.warning,
+    marginBottom: spacing.xs,
+  },
+  difficultyText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
 
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16 },
-  cardTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 16 },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  editHint: { fontSize: 12, color: '#1a73e8', fontStyle: 'italic' },
+  // Card
+  cardSpacing: {
+    marginBottom: spacing.lg,
+  },
+  cardTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  editHint: {
+    fontSize: typography.sizes.xs,
+    color: colors.primary,
+    fontStyle: 'italic',
+  },
 
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  infoLabel: { fontSize: 14, color: '#666' },
-  infoValue: { fontSize: 14, color: '#333', fontWeight: '500', flex: 1, textAlign: 'right' },
+  // Info rows
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  infoLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
+  infoValue: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+    flex: 1,
+    textAlign: 'right',
+  },
 
-  lineItem: { marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  lineItemTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  // Line items
+  lineItem: {
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  lineItemTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
   lineItemIndex: {
-    fontSize: 14, fontWeight: '700', color: '#fff', backgroundColor: '#1a73e8',
-    width: 28, height: 28, borderRadius: 14, textAlign: 'center', lineHeight: 28, overflow: 'hidden',
+    width: 28,
+    height: 28,
+    borderRadius: radii.full,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  removeItemBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#ffebee', alignItems: 'center', justifyContent: 'center' },
-  removeItemText: { fontSize: 14, color: '#d32f2f', fontWeight: '600' },
+  lineItemIndexText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.textOnPrimary,
+  },
+  removeItemBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: radii.full,
+    backgroundColor: colors.errorBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-  fieldLabel: { fontSize: 12, fontWeight: '500', color: '#666', marginBottom: 4, marginTop: 8 },
+  fieldLabel: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+  },
 
-  editInput: { backgroundColor: '#f8f9fa', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#e0e0e0', fontSize: 14, color: '#333' },
-  editTextArea: { minHeight: 70, textAlignVertical: 'top' },
-  editInputSmall: { backgroundColor: '#f8f9fa', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#e0e0e0', fontSize: 14, color: '#333', textAlign: 'center' },
+  editInput: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+  },
+  editTextArea: {
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
+  editInputSmall: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius: radii.md,
+    padding: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
 
-  lineItemValuesRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  valueCol: { flex: 1, marginHorizontal: 4 },
+  lineItemValuesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  valueCol: {
+    flex: 1,
+  },
 
-  lineItemSubtotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
-  subtotalLabel: { fontSize: 14, fontWeight: '500', color: '#666' },
-  subtotalValue: { fontSize: 16, fontWeight: '700', color: '#1a73e8' },
+  lineItemSubtotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  subtotalLabel: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+  },
+  subtotalValue: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.bold,
+    color: colors.primary,
+  },
 
-  taxToggleRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  taxCheckbox: { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: '#ccc', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  taxCheckboxActive: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  taxCheckmark: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  taxToggleLabel: { fontSize: 13, color: '#666' },
+  taxToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  taxCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: radii.sm,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  taxCheckboxActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  taxToggleLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
 
-  addItemButton: { borderWidth: 2, borderColor: '#1a73e8', borderStyle: 'dashed', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 8 },
-  addItemText: { fontSize: 14, fontWeight: '600', color: '#1a73e8' },
+  addItemButton: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    borderRadius: radii.md,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  addItemText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+  },
 
-  ratesRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  rateCol: { flex: 1, marginHorizontal: 4 },
+  ratesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  rateCol: {
+    flex: 1,
+  },
 
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  totalLabel: { fontSize: 15, color: '#666' },
-  totalValue: { fontSize: 15, color: '#333', fontWeight: '500' },
-  divider: { height: 1, backgroundColor: '#e0e0e0', marginVertical: 12 },
-  grandTotalLabel: { fontSize: 20, fontWeight: '700', color: '#333' },
-  grandTotalValue: { fontSize: 24, fontWeight: '700', color: '#34a853' },
+  // Totals
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  totalLabel: {
+    fontSize: typography.sizes.base,
+    color: colors.textSecondary,
+  },
+  totalValue: {
+    fontSize: typography.sizes.base,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+  },
+  grandTotalLabel: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+  },
+  grandTotalValue: {
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.bold,
+    color: colors.success,
+  },
 
-  primaryButton: { backgroundColor: '#1a73e8', borderRadius: 12, padding: 18, alignItems: 'center', marginBottom: 12 },
-  primaryButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  secondaryButton: { backgroundColor: '#fff', borderRadius: 12, padding: 18, alignItems: 'center', borderWidth: 2, borderColor: '#1a73e8' },
-  secondaryButtonText: { color: '#1a73e8', fontSize: 18, fontWeight: '600' },
+  // Actions
+  actionBtnSpacing: {
+    marginBottom: spacing.md,
+  },
 });

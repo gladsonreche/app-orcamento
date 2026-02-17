@@ -1,10 +1,11 @@
 import React from 'react';
-import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Home, FileText, Receipt, Users } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { LoadingScreen } from '../components/LoadingScreen';
+import { colors, typography } from '../theme';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -29,12 +30,19 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#1a73e8',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: typography.weights.medium,
+        },
         tabBarStyle: {
           paddingBottom: 8,
           paddingTop: 8,
           height: 60,
+          backgroundColor: colors.bgPrimary,
+          borderTopWidth: 0.5,
+          borderTopColor: colors.border,
         },
       }}
     >
@@ -43,7 +51,7 @@ function MainTabs() {
         component={DashboardScreen}
         options={{
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color }) => <TabIcon emoji="🏠" color={color} />,
+          tabBarIcon: ({ color }) => <Home size={22} color={color} />,
         }}
       />
       <Tab.Screen
@@ -51,7 +59,7 @@ function MainTabs() {
         component={EstimatesListScreen}
         options={{
           tabBarLabel: 'Estimates',
-          tabBarIcon: ({ color }) => <TabIcon emoji="📋" color={color} />,
+          tabBarIcon: ({ color }) => <FileText size={22} color={color} />,
         }}
       />
       <Tab.Screen
@@ -59,7 +67,7 @@ function MainTabs() {
         component={InvoicesListScreen}
         options={{
           tabBarLabel: 'Invoices',
-          tabBarIcon: ({ color }) => <TabIcon emoji="💰" color={color} />,
+          tabBarIcon: ({ color }) => <Receipt size={22} color={color} />,
         }}
       />
       <Tab.Screen
@@ -67,15 +75,11 @@ function MainTabs() {
         component={ClientsScreen}
         options={{
           tabBarLabel: 'Clients',
-          tabBarIcon: ({ color }) => <TabIcon emoji="👥" color={color} />,
+          tabBarIcon: ({ color }) => <Users size={22} color={color} />,
         }}
       />
     </Tab.Navigator>
   );
-}
-
-function TabIcon({ emoji }: { emoji: string; color: string }) {
-  return <Text style={{ fontSize: 24 }}>{emoji}</Text>;
 }
 
 export default function AppNavigator() {
@@ -87,19 +91,13 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
-          // Auth Stack - Not authenticated
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="SignUp" component={SignUpScreen} />
           </>
         ) : (
-          // Main Stack - Authenticated
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="NewProject" component={NewProjectScreen} />

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -12,10 +11,16 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import {
+  Building2, Camera, Minus, Plus, Trash2, LogOut,
+  Phone, Mail, Globe, FileCheck, MapPin,
+} from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { handleError } from '../utils/errorHandler';
 import { storageService } from '../services/storage';
+import { colors, typography, spacing, radii, shadows } from '../theme';
+import { ScreenHeader, Card, Input, Button, IconButton } from '../components/ui';
 
 interface CompanyProfileScreenProps {
   navigation: any;
@@ -44,78 +49,40 @@ export default function CompanyProfileScreen({ navigation }: CompanyProfileScree
       Alert.alert('Permission needed', 'Please allow access to your photo library.');
       return;
     }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
     if (!result.canceled && result.assets && user) {
-      const localUri = result.assets[0].uri;
-      setLogoUri(localUri); // Show immediately
+      setLogoUri(result.assets[0].uri);
       setLogoScale(1);
-
-      // Note: Storage upload will happen when user saves the profile
-      // The logo URL will be uploaded in handleSave
     }
   };
 
   const adjustScale = (delta: number) => {
-    setLogoScale(prev => {
-      const next = Math.round((prev + delta) * 10) / 10;
-      return Math.max(0.5, Math.min(2.0, next));
-    });
+    setLogoScale(prev => Math.max(0.5, Math.min(2.0, Math.round((prev + delta) * 10) / 10)));
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      Alert.alert('Required', 'Please enter your company name.');
-      return;
-    }
-
-    if (!user) {
-      Alert.alert('Error', 'User not authenticated');
-      return;
-    }
+    if (!name.trim()) { Alert.alert('Required', 'Please enter your company name.'); return; }
+    if (!user) { Alert.alert('Error', 'User not authenticated'); return; }
 
     setLoading(true);
     try {
       let finalLogoUri = logoUri;
-
-      // Upload logo if it's a local file (not already uploaded)
       if (logoUri && logoUri.startsWith('file://')) {
         try {
           finalLogoUri = await storageService.uploadLogo(user.id, logoUri);
         } catch (uploadError) {
           console.error('Logo upload failed:', uploadError);
-          // Continue saving profile even if logo upload fails
-          Alert.alert(
-            'Warning',
-            'Logo upload failed, but profile will be saved without logo. Please try again later.'
-          );
+          Alert.alert('Warning', 'Logo upload failed, but profile will be saved without logo.');
           finalLogoUri = '';
         }
       }
-
       await updateCompanyProfile({
-        name: name.trim(),
-        address: address.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        zip: zip.trim(),
-        phone: phone.trim(),
-        email: email.trim(),
-        website: website.trim(),
-        licenseNumber: licenseNumber.trim(),
-        logoUri: finalLogoUri,
-        logoScale,
+        name: name.trim(), address: address.trim(), city: city.trim(),
+        state: state.trim(), zip: zip.trim(), phone: phone.trim(),
+        email: email.trim(), website: website.trim(), licenseNumber: licenseNumber.trim(),
+        logoUri: finalLogoUri, logoScale,
       });
-
-      // Update local state with uploaded URL
-      if (finalLogoUri !== logoUri) {
-        setLogoUri(finalLogoUri);
-      }
-
+      if (finalLogoUri !== logoUri) setLogoUri(finalLogoUri);
       Alert.alert('Saved', 'Company profile has been updated.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
@@ -127,20 +94,10 @@ export default function CompanyProfileScreen({ navigation }: CompanyProfileScree
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await signOut();
-          },
-        },
-      ]
-    );
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: () => signOut() },
+    ]);
   };
 
   return (
@@ -148,46 +105,31 @@ export default function CompanyProfileScreen({ navigation }: CompanyProfileScree
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Company Profile</Text>
-        <View style={{ width: 50 }} />
-      </View>
+      <ScreenHeader title="Company Profile" onBack={() => navigation.goBack()} />
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Logo */}
         <View style={styles.logoSection}>
-          <TouchableOpacity style={styles.logoContainer} onPress={pickLogo}>
+          <TouchableOpacity style={styles.logoContainer} onPress={pickLogo} activeOpacity={0.7}>
             {logoUri ? (
-              <Image
-                source={{ uri: logoUri }}
-                style={[styles.logoImage, { transform: [{ scale: logoScale }] }]}
-                resizeMode="contain"
-              />
+              <Image source={{ uri: logoUri }} style={[styles.logoImage, { transform: [{ scale: logoScale }] }]} resizeMode="contain" />
             ) : (
               <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoPlaceholderIcon}>🏢</Text>
+                <Camera size={28} color={colors.textTertiary} />
                 <Text style={styles.logoPlaceholderText}>Tap to add logo</Text>
               </View>
             )}
           </TouchableOpacity>
-
           {logoUri ? (
             <View style={styles.logoControls}>
               <View style={styles.scaleRow}>
-                <TouchableOpacity style={styles.scaleButton} onPress={() => adjustScale(-0.1)}>
-                  <Text style={styles.scaleButtonText}>-</Text>
-                </TouchableOpacity>
+                <IconButton icon={<Minus size={16} color={colors.textOnPrimary} />}
+                  onPress={() => adjustScale(-0.1)} size={32}
+                  style={{ backgroundColor: colors.primary, borderRadius: 16 }} />
                 <Text style={styles.scaleLabel}>{Math.round(logoScale * 100)}%</Text>
-                <TouchableOpacity style={styles.scaleButton} onPress={() => adjustScale(0.1)}>
-                  <Text style={styles.scaleButtonText}>+</Text>
-                </TouchableOpacity>
+                <IconButton icon={<Plus size={16} color={colors.textOnPrimary} />}
+                  onPress={() => adjustScale(0.1)} size={32}
+                  style={{ backgroundColor: colors.primary, borderRadius: 16 }} />
               </View>
               <TouchableOpacity onPress={() => { setLogoUri(''); setLogoScale(1); }}>
                 <Text style={styles.removeLogo}>Remove logo</Text>
@@ -197,123 +139,59 @@ export default function CompanyProfileScreen({ navigation }: CompanyProfileScree
         </View>
 
         {/* Company Info */}
-        <View style={styles.card}>
+        <Card variant="default" style={styles.card}>
           <Text style={styles.cardTitle}>Company Information</Text>
-
-          <Text style={styles.label}>Company Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., ABC Construction LLC"
-            placeholderTextColor="#999"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
-
-          <Text style={styles.label}>Address</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., 123 Main Street"
-            placeholderTextColor="#999"
-            value={address}
+          <Input label="Company Name *" placeholder="e.g., ABC Construction LLC" value={name}
+            onChangeText={setName} autoCapitalize="words"
+            iconLeft={<Building2 size={18} color={colors.textTertiary} />}
+            containerStyle={styles.inputSpacing} />
+          <Input label="Address" placeholder="e.g., 123 Main Street" value={address}
             onChangeText={setAddress}
-          />
-
+            iconLeft={<MapPin size={18} color={colors.textTertiary} />}
+            containerStyle={styles.inputSpacing} />
           <View style={styles.row}>
-            <View style={styles.rowCol2}>
-              <Text style={styles.label}>City</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., Miami"
-                placeholderTextColor="#999"
-                value={city}
-                onChangeText={setCity}
-              />
-            </View>
-            <View style={styles.rowCol1}>
-              <Text style={styles.label}>State</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="FL"
-                placeholderTextColor="#999"
-                value={state}
-                onChangeText={setState}
-                autoCapitalize="characters"
-                maxLength={2}
-              />
-            </View>
-            <View style={styles.rowCol1}>
-              <Text style={styles.label}>ZIP</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="33101"
-                placeholderTextColor="#999"
-                value={zip}
-                onChangeText={setZip}
-                keyboardType="numeric"
-                maxLength={5}
-              />
-            </View>
+            <Input label="City" placeholder="Miami" value={city}
+              onChangeText={setCity} containerStyle={styles.flex2} />
+            <Input label="State" placeholder="FL" value={state}
+              onChangeText={setState} autoCapitalize="characters" maxLength={2}
+              containerStyle={styles.flex1} />
+            <Input label="ZIP" placeholder="33101" value={zip}
+              onChangeText={setZip} keyboardType="numeric" maxLength={5}
+              containerStyle={styles.flex1} />
           </View>
-        </View>
+        </Card>
 
         {/* Contact */}
-        <View style={styles.card}>
+        <Card variant="default" style={styles.card}>
           <Text style={styles.cardTitle}>Contact Information</Text>
-
-          <Text style={styles.label}>Phone</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., (305) 555-1234"
-            placeholderTextColor="#999"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
-
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., info@abcconstruction.com"
-            placeholderTextColor="#999"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.label}>Website</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., www.abcconstruction.com"
-            placeholderTextColor="#999"
-            value={website}
-            onChangeText={setWebsite}
-            autoCapitalize="none"
-          />
-        </View>
+          <Input label="Phone" placeholder="(305) 555-1234" value={phone}
+            onChangeText={setPhone} keyboardType="phone-pad"
+            iconLeft={<Phone size={18} color={colors.textTertiary} />}
+            containerStyle={styles.inputSpacing} />
+          <Input label="Email" placeholder="info@abcconstruction.com" value={email}
+            onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"
+            iconLeft={<Mail size={18} color={colors.textTertiary} />}
+            containerStyle={styles.inputSpacing} />
+          <Input label="Website" placeholder="www.abcconstruction.com" value={website}
+            onChangeText={setWebsite} autoCapitalize="none"
+            iconLeft={<Globe size={18} color={colors.textTertiary} />}
+            containerStyle={styles.inputSpacing} />
+        </Card>
 
         {/* License */}
-        <View style={styles.card}>
+        <Card variant="default" style={styles.card}>
           <Text style={styles.cardTitle}>License & Registration</Text>
+          <Input label="License Number" placeholder="e.g., CBC1234567" value={licenseNumber}
+            onChangeText={setLicenseNumber} autoCapitalize="characters"
+            iconLeft={<FileCheck size={18} color={colors.textTertiary} />}
+            containerStyle={styles.inputSpacing} />
+        </Card>
 
-          <Text style={styles.label}>License Number</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., CBC1234567"
-            placeholderTextColor="#999"
-            value={licenseNumber}
-            onChangeText={setLicenseNumber}
-            autoCapitalize="characters"
-          />
-        </View>
+        <Button title="Save Profile" onPress={handleSave} loading={loading}
+          fullWidth size="lg" style={styles.saveBtn} />
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Profile</Text>
-        </TouchableOpacity>
-
-        {/* Account Section */}
-        <View style={styles.card}>
+        {/* Account */}
+        <Card variant="outlined" style={styles.card}>
           <Text style={styles.cardTitle}>Account</Text>
           {user && (
             <View style={styles.accountInfo}>
@@ -321,10 +199,9 @@ export default function CompanyProfileScreen({ navigation }: CompanyProfileScree
               <Text style={styles.accountValue}>{user.email}</Text>
             </View>
           )}
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+          <Button title="Logout" onPress={handleLogout} variant="destructive" fullWidth
+            icon={<LogOut size={18} color={colors.textOnPrimary} />} />
+        </Card>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -333,83 +210,39 @@ export default function CompanyProfileScreen({ navigation }: CompanyProfileScree
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: {
-    backgroundColor: '#fff', padding: 20, paddingTop: 60,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderBottomWidth: 1, borderBottomColor: '#e0e0e0',
-  },
-  backButton: { fontSize: 16, color: '#1a73e8' },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#333' },
-  content: { flex: 1, padding: 20 },
-
-  logoSection: { alignItems: 'center', marginBottom: 20 },
+  container: { flex: 1, backgroundColor: colors.bgSecondary },
+  content: { flex: 1, padding: spacing.lg },
+  logoSection: { alignItems: 'center', marginBottom: spacing.xl },
   logoContainer: {
-    width: 160, height: 120, borderRadius: 16, overflow: 'hidden',
-    borderWidth: 2, borderColor: '#e0e0e0', borderStyle: 'dashed',
+    width: 160, height: 120, borderRadius: radii.xl, overflow: 'hidden',
+    borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed',
   },
   logoImage: { width: '100%', height: '100%' },
   logoPlaceholder: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f0f0',
+    flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgTertiary,
   },
-  logoPlaceholderIcon: { fontSize: 40, marginBottom: 4 },
-  logoPlaceholderText: { fontSize: 12, color: '#999' },
-
-  logoControls: { alignItems: 'center', marginTop: 10 },
-  scaleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  scaleButton: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: '#1a73e8',
-    alignItems: 'center', justifyContent: 'center',
+  logoPlaceholderText: { fontSize: typography.sizes.xs, color: colors.textTertiary, marginTop: spacing.xs },
+  logoControls: { alignItems: 'center', marginTop: spacing.md },
+  scaleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  scaleLabel: {
+    fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold,
+    color: colors.textPrimary, minWidth: 45, textAlign: 'center',
   },
-  scaleButtonText: { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 24 },
-  scaleLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginHorizontal: 16, minWidth: 45, textAlign: 'center' },
-  removeLogo: { fontSize: 14, color: '#d32f2f', marginTop: 4 },
-
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16 },
-  cardTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 12 },
-
-  label: { fontSize: 14, fontWeight: '500', color: '#333', marginBottom: 6, marginTop: 12 },
-  input: {
-    backgroundColor: '#f8f9fa', borderRadius: 10, padding: 14,
-    fontSize: 15, borderWidth: 1, borderColor: '#e0e0e0', color: '#333',
+  removeLogo: { fontSize: typography.sizes.sm, color: colors.error, marginTop: spacing.sm },
+  card: { marginBottom: spacing.lg },
+  cardTitle: {
+    fontSize: typography.sizes.lg, fontWeight: typography.weights.semibold,
+    color: colors.textPrimary, marginBottom: spacing.md,
   },
-
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  rowCol2: { flex: 2, marginRight: 8 },
-  rowCol1: { flex: 1, marginLeft: 4 },
-
-  saveButton: {
-    backgroundColor: '#1a73e8', borderRadius: 12, padding: 18, alignItems: 'center', marginTop: 8,
-  },
-  saveButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
-
+  inputSpacing: { marginBottom: spacing.md },
+  row: { flexDirection: 'row', gap: spacing.sm },
+  flex2: { flex: 2 },
+  flex1: { flex: 1 },
+  saveBtn: { marginBottom: spacing.lg },
   accountInfo: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: colors.bgTertiary, borderRadius: radii.md,
+    padding: spacing.md, marginBottom: spacing.md,
   },
-  accountLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  accountValue: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  logoutButton: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d32f2f',
-  },
-  logoutButtonText: {
-    color: '#d32f2f',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  accountLabel: { fontSize: typography.sizes.xs, color: colors.textSecondary, marginBottom: spacing.xs },
+  accountValue: { fontSize: typography.sizes.sm, color: colors.textPrimary, fontWeight: typography.weights.medium },
 });

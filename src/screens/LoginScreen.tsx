@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Building2, Mail, Lock } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { logLoginValidationError } from '../services/authLogger';
+import { colors, typography, spacing, radii, shadows } from '../theme';
+import { Button, Input } from '../components/ui';
 
 interface LoginScreenProps {
   navigation: any;
@@ -20,6 +21,7 @@ interface LoginScreenProps {
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
   const { signIn } = useAuth();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,46 +47,49 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <View style={styles.content}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logo}>📸</Text>
-          <Text style={styles.appName}>PhotoQuote AI</Text>
-          <Text style={styles.tagline}>Professional estimates in minutes</Text>
+      {/* Green Header */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing['3xl'] }]}>
+        <View style={styles.logoCircle}>
+          <Building2 size={32} color={colors.textOnPrimary} />
         </View>
+        <Text style={styles.appName}>PhotoQuote AI</Text>
+        <Text style={styles.tagline}>Professional estimates in minutes</Text>
+      </View>
 
+      {/* Form Card */}
+      <View style={styles.formCard}>
         <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#999"
+          <Input
+            label="Email"
+            placeholder="your@email.com"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
             editable={!loading}
+            iconLeft={<Mail size={18} color={colors.textTertiary} />}
+            containerStyle={styles.inputSpacing}
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#999"
+          <Input
+            label="Password"
+            placeholder="Enter your password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             editable={!loading}
+            iconLeft={<Lock size={18} color={colors.textTertiary} />}
+            containerStyle={styles.inputSpacing}
           />
 
-          <TouchableOpacity
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+          <Button
+            title="Sign In"
             onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
+            loading={loading}
+            fullWidth
+            size="lg"
+            style={styles.loginButton}
+          />
 
           <TouchableOpacity
             style={styles.signUpLink}
@@ -92,16 +97,18 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             disabled={loading}
           >
             <Text style={styles.signUpLinkText}>
-              Don't have an account? <Text style={styles.signUpLinkBold}>Sign Up</Text>
+              Don't have an account?{' '}
+              <Text style={styles.signUpLinkBold}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </View>
+      </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Florida's #1 AI-powered estimation tool for contractors
-          </Text>
-        </View>
+      {/* Footer */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          Florida's #1 AI-powered estimation tool for contractors
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -110,77 +117,72 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.bgSecondary,
   },
-  content: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  logoContainer: {
+  header: {
+    backgroundColor: colors.primary,
     alignItems: 'center',
-    marginBottom: 40,
+    paddingBottom: spacing['5xl'],
+    paddingHorizontal: spacing.xl,
   },
-  logo: {
-    fontSize: 64,
-    marginBottom: 10,
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
   },
   appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1a73e8',
-    marginBottom: 8,
+    fontSize: typography.sizes['3xl'],
+    fontWeight: typography.weights.bold,
+    color: colors.textOnPrimary,
+    marginBottom: spacing.xs,
   },
   tagline: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: typography.sizes.base,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  formCard: {
+    marginTop: -spacing['2xl'],
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.bgPrimary,
+    borderRadius: radii['2xl'],
+    padding: spacing['2xl'],
+    ...shadows.lg,
   },
   form: {
     width: '100%',
   },
-  input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+  inputSpacing: {
+    marginBottom: spacing.lg,
   },
   loginButton: {
-    backgroundColor: '#1a73e8',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  loginButtonDisabled: {
-    opacity: 0.6,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    marginTop: spacing.sm,
   },
   signUpLink: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: spacing.xl,
   },
   signUpLinkText: {
-    color: '#666',
-    fontSize: 14,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
   },
   signUpLinkBold: {
-    color: '#1a73e8',
-    fontWeight: '600',
+    color: colors.primary,
+    fontWeight: typography.weights.semibold,
   },
   footer: {
-    marginTop: 40,
+    flex: 1,
+    justifyContent: 'flex-end',
     alignItems: 'center',
+    paddingBottom: spacing['3xl'],
+    paddingHorizontal: spacing['2xl'],
   },
   footerText: {
-    color: '#999',
-    fontSize: 12,
+    color: colors.textTertiary,
+    fontSize: typography.sizes.xs,
     textAlign: 'center',
   },
 });

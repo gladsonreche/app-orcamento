@@ -1,20 +1,13 @@
 import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
-import { useApp, EstimateStatus } from '../context/AppContext';
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  Draft: { bg: '#e8f0fe', text: '#1a73e8' },
-  Sent: { bg: '#fef7e0', text: '#e37400' },
-  Approved: { bg: '#e6f4ea', text: '#34a853' },
-  'In Progress': { bg: '#fff3e0', text: '#f57c00' },
-  Completed: { bg: '#e0f2f1', text: '#00897b' },
-};
+  Users, FolderOpen, FileText, DollarSign, Plus, ChevronRight,
+  Building2, Settings, UserPlus,
+} from 'lucide-react-native';
+import { useApp } from '../context/AppContext';
+import { colors, typography, spacing, radii, shadows } from '../theme';
+import { Card, StatCard, StatusBadge, EmptyState } from '../components/ui';
 
 interface DashboardScreenProps {
   navigation: any;
@@ -22,167 +15,252 @@ interface DashboardScreenProps {
 
 export default function DashboardScreen({ navigation }: DashboardScreenProps) {
   const { clients, projects, estimates, getClient, getProjectEstimates } = useApp();
+  const insets = useSafeAreaInsets();
 
   const totalEstimateValue = estimates.reduce((sum, e) => sum + e.total, 0);
-
-  const stats = [
-    { label: 'Projects', value: String(projects.length), color: '#1a73e8' },
-    { label: 'Estimates', value: String(estimates.length), color: '#34a853' },
-    { label: 'Clients', value: String(clients.length), color: '#fbbc04' },
-  ];
-
   const recentProjects = projects.slice(0, 5);
 
-  // Get the effective status for a project based on its most recent estimate
   const getProjectStatus = (projectId: string): string => {
     const projectEstimates = getProjectEstimates(projectId);
-    if (projectEstimates.length === 0) return 'Draft';
-    // Use the most recent estimate's status (estimates are ordered newest first)
-    return projectEstimates[0].status;
+    if (projectEstimates.length === 0) return 'draft';
+    return projectEstimates[0].status.toLowerCase().replace(' ', '_');
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Welcome back!</Text>
-          <Text style={styles.companyName}>PhotoQuote AI</Text>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
+        <View style={styles.headerLeft}>
+          <View style={styles.logoCircle}>
+            <Building2 size={18} color={colors.textOnPrimary} />
+          </View>
+          <View>
+            <Text style={styles.companyName}>PhotoQuote AI</Text>
+            <Text style={styles.greeting}>Welcome back</Text>
+          </View>
         </View>
         <TouchableOpacity
-          style={styles.settingsButton}
+          style={styles.settingsBtn}
           onPress={() => navigation.navigate('CompanyProfile')}
+          activeOpacity={0.7}
         >
-          <Text style={styles.settingsIcon}>⚙️</Text>
+          <Settings size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          {stats.map((stat, index) => (
-            <View key={index} style={[styles.statCard, { borderLeftColor: stat.color }]}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
 
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: '#1a73e8' }]}
-              onPress={() => navigation.navigate('NewProject')}
-            >
-              <Text style={styles.actionIcon}>➕</Text>
-              <Text style={styles.actionText}>New Project</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: '#34a853' }]}
-              onPress={() => navigation.navigate('AddClient')}
-            >
-              <Text style={styles.actionIcon}>👥</Text>
-              <Text style={styles.actionText}>New Client</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: '#fbbc04' }]}
-              onPress={() => navigation.navigate('Clients')}
-            >
-              <Text style={styles.actionIcon}>📋</Text>
-              <Text style={styles.actionText}>View All</Text>
-            </TouchableOpacity>
+        {/* Stat Cards */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statsRow}>
+            <StatCard
+              label="Clients"
+              value={clients.length}
+              icon={<Users size={18} color={colors.statGreen} />}
+              accentColor={colors.statGreen}
+            />
+            <View style={{ width: spacing.md }} />
+            <StatCard
+              label="Projects"
+              value={projects.length}
+              icon={<FolderOpen size={18} color={colors.statBlue} />}
+              accentColor={colors.statBlue}
+            />
+          </View>
+          <View style={styles.statsRow}>
+            <StatCard
+              label="Estimates"
+              value={estimates.length}
+              icon={<FileText size={18} color={colors.statOrange} />}
+              accentColor={colors.statOrange}
+            />
+            <View style={{ width: spacing.md }} />
+            <StatCard
+              label="Revenue"
+              value={`$${totalEstimateValue >= 1000 ? (totalEstimateValue / 1000).toFixed(1) + 'k' : totalEstimateValue.toFixed(0)}`}
+              icon={<DollarSign size={18} color={colors.statPurple} />}
+              accentColor={colors.statPurple}
+            />
           </View>
         </View>
 
-        {/* Recent Projects */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Projects</Text>
-          {recentProjects.length === 0 && (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No projects yet. Tap "New Project" to get started!</Text>
+        {/* Quick Actions */}
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('NewProject')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: colors.primary + '15' }]}>
+              <Plus size={20} color={colors.primary} />
             </View>
-          )}
-          {recentProjects.map((project) => {
+            <Text style={styles.actionText}>New Project</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('AddClient')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: colors.accent + '15' }]}>
+              <UserPlus size={20} color={colors.accent} />
+            </View>
+            <Text style={styles.actionText}>New Client</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Estimates')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: colors.statBlue + '15' }]}>
+              <FileText size={20} color={colors.statBlue} />
+            </View>
+            <Text style={styles.actionText}>Estimates</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Recent Projects */}
+        <Text style={styles.sectionTitle}>Recent Projects</Text>
+        {recentProjects.length === 0 ? (
+          <EmptyState
+            icon={<FolderOpen size={48} color={colors.textTertiary} />}
+            title="No projects yet"
+            description='Tap "New Project" to get started!'
+          />
+        ) : (
+          recentProjects.map((project) => {
             const client = getClient(project.clientId);
             const status = getProjectStatus(project.id);
-            const colors = STATUS_COLORS[status] ?? STATUS_COLORS.Draft;
             return (
-              <TouchableOpacity
+              <Card
                 key={project.id}
-                style={styles.projectCard}
+                variant="elevated"
                 onPress={() => navigation.navigate('PhotoUpload', { projectId: project.id })}
+                style={styles.projectCard}
               >
-                <View style={styles.projectIcon}>
-                  <Text style={styles.projectIconText}>📁</Text>
+                <View style={styles.projectRow}>
+                  <View style={styles.projectIconWrap}>
+                    <Building2 size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.projectInfo}>
+                    <Text style={styles.projectName}>{project.name}</Text>
+                    <Text style={styles.projectClient}>{client?.name ?? 'Unknown'}</Text>
+                  </View>
+                  <StatusBadge status={status as any} />
+                  <ChevronRight size={18} color={colors.textTertiary} style={{ marginLeft: spacing.sm }} />
                 </View>
-                <View style={styles.projectInfo}>
-                  <Text style={styles.projectName}>{project.name}</Text>
-                  <Text style={styles.projectClient}>
-                    Client: {client?.name ?? 'Unknown'}
-                  </Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: colors.bg }]}>
-                  <Text style={[styles.statusText, { color: colors.text }]}>{status}</Text>
-                </View>
-              </TouchableOpacity>
+              </Card>
             );
-          })}
-        </View>
+          })
+        )}
+        <View style={{ height: spacing['4xl'] }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  container: { flex: 1, backgroundColor: colors.bgSecondary },
   header: {
-    backgroundColor: '#fff', padding: 20, paddingTop: 60,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    borderBottomWidth: 1, borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.bgPrimary,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
-  greeting: { fontSize: 16, color: '#666' },
-  companyName: { fontSize: 24, fontWeight: 'bold', color: '#333', marginTop: 4 },
-  settingsButton: { padding: 8 },
-  settingsIcon: { fontSize: 24 },
-  content: { flex: 1, padding: 20 },
-  statsContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  statCard: {
-    flex: 1, backgroundColor: '#fff', padding: 16, borderRadius: 12,
-    marginHorizontal: 4, borderLeftWidth: 4, elevation: 2,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
-  statValue: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 4 },
-  statLabel: { fontSize: 12, color: '#666' },
-  section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 12 },
-  actionsContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+  logoCircle: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  companyName: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+  },
+  greeting: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  settingsBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: colors.bgTertiary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  content: { flex: 1 },
+  scrollContent: { padding: spacing.lg },
+  statsGrid: {
+    marginBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  statsRow: {
+    flexDirection: 'row',
+  },
+  sectionTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
+  },
   actionCard: {
-    flex: 1, padding: 20, borderRadius: 12, alignItems: 'center',
-    marginHorizontal: 4, elevation: 2,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    flex: 1,
+    backgroundColor: colors.bgPrimary,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
+    alignItems: 'center',
+    ...shadows.sm,
   },
-  actionIcon: { fontSize: 32, marginBottom: 8 },
-  actionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  emptyCard: {
-    backgroundColor: '#fff', padding: 24, borderRadius: 12, alignItems: 'center',
+  actionIcon: {
+    width: 44, height: 44, borderRadius: radii.lg,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
-  emptyText: { fontSize: 14, color: '#999', textAlign: 'center' },
+  actionText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   projectCard: {
-    backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12,
-    flexDirection: 'row', alignItems: 'center', elevation: 2,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    marginBottom: spacing.sm,
   },
-  projectIcon: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: '#f0f0f0',
-    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  projectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  projectIconText: { fontSize: 24 },
+  projectIconWrap: {
+    width: 40, height: 40, borderRadius: radii.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: spacing.md,
+  },
   projectInfo: { flex: 1 },
-  projectName: { fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 4 },
-  projectClient: { fontSize: 14, color: '#666' },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  statusText: { fontSize: 12, fontWeight: '600' },
+  projectName: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  projectClient: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
 });

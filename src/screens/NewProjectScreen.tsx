@@ -4,15 +4,17 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Alert,
   Modal,
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronRight, X, ArrowRight } from 'lucide-react-native';
+import { colors, typography, spacing, radii, shadows } from '../theme';
+import { ScreenHeader, Card, Button, Input, Divider } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { handleError } from '../utils/errorHandler';
 
@@ -22,6 +24,7 @@ interface NewProjectScreenProps {
 
 export default function NewProjectScreen({ navigation }: NewProjectScreenProps) {
   const { clients, addProject } = useApp();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
 
   const [projectName, setProjectName] = useState('');
@@ -88,28 +91,22 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Project</Text>
-        <View style={{ width: 50 }} />
-      </View>
+      <ScreenHeader title="New Project" onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* Project Details Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Project Details</Text>
 
-          <Text style={styles.label}>Project Name *</Text>
-          <TextInput
-            style={styles.input}
+          <Input
+            label="Project Name *"
             placeholder="e.g., Bathroom Remodel - Smith Residence"
-            placeholderTextColor="#999"
             value={projectName}
             onChangeText={setProjectName}
+            containerStyle={styles.inputSpacing}
           />
 
-          <Text style={styles.label}>Client *</Text>
+          <Text style={styles.fieldLabel}>Client *</Text>
           <TouchableOpacity
             style={styles.selectInput}
             onPress={() => {
@@ -130,39 +127,35 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
             <Text style={selectedClient ? styles.selectTextSelected : styles.selectText}>
               {selectedClient ? selectedClient.name : 'Select Client'}
             </Text>
-            <Text style={styles.selectArrow}>›</Text>
+            <ChevronRight size={20} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
+        {/* Property Location Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Property Location</Text>
 
-          <Text style={styles.label}>Street Address *</Text>
-          <TextInput
-            style={styles.input}
+          <Input
+            label="Street Address *"
             placeholder="123 Ocean Dr"
-            placeholderTextColor="#999"
             value={address}
             onChangeText={setAddress}
+            containerStyle={styles.inputSpacing}
           />
 
           <View style={styles.row}>
             <View style={styles.col}>
-              <Text style={styles.label}>City</Text>
-              <TextInput
-                style={styles.input}
+              <Input
+                label="City"
                 placeholder="Miami"
-                placeholderTextColor="#999"
                 value={city}
                 onChangeText={setCity}
               />
             </View>
             <View style={styles.col}>
-              <Text style={styles.label}>ZIP Code *</Text>
-              <TextInput
-                style={styles.input}
+              <Input
+                label="ZIP Code *"
                 placeholder="33101"
-                placeholderTextColor="#999"
                 value={zip}
                 onChangeText={setZip}
                 keyboardType="number-pad"
@@ -171,10 +164,11 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
           </View>
         </View>
 
+        {/* Property Details Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Property Details</Text>
 
-          <Text style={styles.label}>Property Type *</Text>
+          <Text style={styles.fieldLabel}>Property Type *</Text>
           <View style={styles.optionsRow}>
             {['Residential', 'Commercial', 'Condo'].map((type) => (
               <TouchableOpacity
@@ -189,7 +183,7 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
             ))}
           </View>
 
-          <Text style={styles.label}>Access Level *</Text>
+          <Text style={styles.fieldLabel}>Access Level *</Text>
           <View style={styles.optionsRow}>
             {['Easy', 'Medium', 'Hard'].map((level) => (
               <TouchableOpacity
@@ -206,18 +200,16 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
 
           <View style={styles.row}>
             <View style={styles.col}>
-              <Text style={styles.label}>Floor Level</Text>
-              <TextInput
-                style={styles.input}
+              <Input
+                label="Floor Level"
                 placeholder="0 (Ground)"
-                placeholderTextColor="#999"
                 value={floorLevel}
                 onChangeText={setFloorLevel}
                 keyboardType="number-pad"
               />
             </View>
             <View style={styles.col}>
-              <Text style={styles.label}>Elevator</Text>
+              <Text style={styles.fieldLabel}>Elevator</Text>
               <View style={styles.optionsRow}>
                 {['Yes', 'No'].map((option) => (
                   <TouchableOpacity
@@ -234,7 +226,7 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
             </View>
           </View>
 
-          <Text style={styles.label}>Parking</Text>
+          <Text style={styles.fieldLabel}>Parking</Text>
           <View style={styles.optionsRow}>
             {['Easy', 'Paid', 'Hard'].map((type) => (
               <TouchableOpacity
@@ -250,9 +242,15 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
           </View>
         </View>
 
-        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-          <Text style={styles.continueButtonText}>Continue to Photos →</Text>
-        </TouchableOpacity>
+        <Button
+          title="Continue to Photos"
+          onPress={handleContinue}
+          size="lg"
+          fullWidth
+          loading={loading}
+          iconRight={<ArrowRight size={18} color={colors.textOnPrimary} />}
+          style={styles.continueButton}
+        />
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -260,11 +258,11 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
       {/* Client Picker Modal */}
       <Modal visible={showClientPicker} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom || spacing.lg }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Client</Text>
-              <TouchableOpacity onPress={() => setShowClientPicker(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity onPress={() => setShowClientPicker(false)} style={styles.modalCloseBtn}>
+                <X size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -297,63 +295,151 @@ export default function NewProjectScreen({ navigation }: NewProjectScreenProps) 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: {
-    backgroundColor: '#fff', padding: 20, paddingTop: 60,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderBottomWidth: 1, borderBottomColor: '#e0e0e0',
+  container: {
+    flex: 1,
+    backgroundColor: colors.bgSecondary,
   },
-  backButton: { fontSize: 16, color: '#1a73e8' },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#333' },
-  content: { flex: 1, padding: 20 },
-  section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '500', color: '#333', marginBottom: 8, marginTop: 12 },
-  input: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16, fontSize: 16,
-    borderWidth: 1, borderColor: '#e0e0e0', color: '#333',
+  content: {
+    flex: 1,
+    padding: spacing.lg,
+  },
+  section: {
+    marginBottom: spacing['2xl'],
+  },
+  sectionTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
+  fieldLabel: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.md,
+  },
+  inputSpacing: {
+    marginBottom: spacing.sm,
   },
   selectInput: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16, fontSize: 16,
-    borderWidth: 1, borderColor: '#e0e0e0', flexDirection: 'row',
-    justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: colors.bgSecondary,
+    borderRadius: radii.md,
+    padding: spacing.lg,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 48,
   },
-  selectText: { fontSize: 16, color: '#999' },
-  selectTextSelected: { fontSize: 16, color: '#333', fontWeight: '500' },
-  selectArrow: { fontSize: 24, color: '#999' },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  col: { flex: 1, marginHorizontal: 4 },
-  optionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  selectText: {
+    fontSize: typography.sizes.base,
+    color: colors.textTertiary,
+  },
+  selectTextSelected: {
+    fontSize: typography.sizes.base,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  col: {
+    flex: 1,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
   optionButton: {
-    flex: 1, padding: 12, borderRadius: 8, borderWidth: 1,
-    borderColor: '#e0e0e0', backgroundColor: '#fff', marginHorizontal: 4, alignItems: 'center',
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.bgPrimary,
+    alignItems: 'center',
   },
-  optionButtonActive: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  optionText: { fontSize: 14, color: '#333', fontWeight: '500' },
-  optionTextActive: { color: '#fff' },
+  optionButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  optionText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+  },
+  optionTextActive: {
+    color: colors.textOnPrimary,
+  },
   continueButton: {
-    backgroundColor: '#1a73e8', borderRadius: 12, padding: 18, alignItems: 'center', marginTop: 24,
+    marginTop: spacing['2xl'],
   },
-  continueButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+
   // Modal
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end',
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    maxHeight: '60%', padding: 20,
+    backgroundColor: colors.bgPrimary,
+    borderTopLeftRadius: radii['2xl'],
+    borderTopRightRadius: radii['2xl'],
+    maxHeight: '60%',
+    padding: spacing.xl,
   },
   modalHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
-  modalTitle: { fontSize: 20, fontWeight: '600', color: '#333' },
-  modalClose: { fontSize: 24, color: '#666', padding: 4 },
+  modalTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.full,
+    backgroundColor: colors.bgTertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalItem: {
-    padding: 16, borderRadius: 12, marginBottom: 8,
-    borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: '#f8f9fa',
+    padding: spacing.lg,
+    borderRadius: radii.lg,
+    marginBottom: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.bgSecondary,
   },
-  modalItemActive: { borderColor: '#1a73e8', backgroundColor: '#e8f0fe' },
-  modalItemName: { fontSize: 16, fontWeight: '600', color: '#333' },
-  modalItemPhone: { fontSize: 14, color: '#666', marginTop: 4 },
-  modalEmpty: { fontSize: 14, color: '#999', textAlign: 'center', padding: 20 },
+  modalItemActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  modalItemName: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  modalItemPhone: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  modalEmpty: {
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    padding: spacing.xl,
+  },
 });
