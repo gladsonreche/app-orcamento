@@ -2,10 +2,13 @@ import { supabase } from './supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 
-/**
- * Storage Service for Supabase Storage
- * Handles uploads of logos, project photos, and PDFs
- */
+const getMimeType = (ext: string): string => {
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    webp: 'image/webp', gif: 'image/gif', heic: 'image/heic',
+  };
+  return map[ext] || 'image/jpeg';
+};
 
 export const storageService = {
   /**
@@ -27,7 +30,7 @@ export const storageService = {
       const { data, error } = await supabase.storage
         .from('company-logos')
         .upload(fileName, decode(base64), {
-          contentType: `image/${fileExtension}`,
+          contentType: getMimeType(fileExtension),
           upsert: true, // Replace existing logo
         });
 
@@ -69,7 +72,7 @@ export const storageService = {
       const { data, error } = await supabase.storage
         .from('project-photos')
         .upload(fileName, decode(base64), {
-          contentType: `image/${fileExtension}`,
+          contentType: getMimeType(fileExtension),
           upsert: false,
         });
 
